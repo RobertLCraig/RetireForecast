@@ -32,6 +32,9 @@
     {{-- C1 — income staircase --}}
     <div>
         <h3 class="text-base font-semibold text-gray-900">Where your income comes from</h3>
+        @if ($timeSeries['income']['takeaway'])
+            <p data-takeaway class="mt-1 font-medium text-gray-900">{{ $timeSeries['income']['takeaway'] }}</p>
+        @endif
         <p class="mt-1 text-sm text-gray-600">Each band is one kind of income, stacked to the year's total. Watch the handover as earnings stop and pensions, the State Pension and any drawdown take over. The table below lists every source on its own.</p>
         <div class="mt-4" wire:key="ts-income-{{ $ladderSelected }}-{{ $timeSeries['nominal'] ? 'cash' : 'real' }}">
             <div wire:ignore>
@@ -74,6 +77,9 @@
     {{-- C2 — wealth composition --}}
     <div>
         <h3 class="text-base font-semibold text-gray-900">Where your wealth is</h3>
+        @if ($timeSeries['wealth']['takeaway'])
+            <p data-takeaway class="mt-1 font-medium text-gray-900">{{ $timeSeries['wealth']['takeaway'] }}</p>
+        @endif
         <p class="mt-1 text-sm text-gray-600">Your net worth split into its three parts, stacked to the total: pensions, savings &amp; investments, and the equity in your home (net of any mortgage). Shows how the balance shifts as pots are drawn on and the home is kept or sold.</p>
         <div class="mt-4" wire:key="ts-wealth-{{ $ladderSelected }}-{{ $timeSeries['nominal'] ? 'cash' : 'real' }}">
             <div wire:ignore>
@@ -116,6 +122,9 @@
     {{-- C3 — costs over time --}}
     <div>
         <h3 class="text-base font-semibold text-gray-900">What you spend, and how it changes</h3>
+        @if ($timeSeries['costs']['takeaway'])
+            <p data-takeaway class="mt-1 font-medium text-gray-900">{{ $timeSeries['costs']['takeaway'] }}</p>
+        @endif
         <p class="mt-1 text-sm text-gray-600">Your target spending each year, split into the essential floor and the discretionary extra on top. The shape reflects the age-varying spending "smile" (more active early, easing in the middle years).</p>
         <div class="mt-4" wire:key="ts-costs-{{ $ladderSelected }}-{{ $timeSeries['nominal'] ? 'cash' : 'real' }}">
             <div wire:ignore>

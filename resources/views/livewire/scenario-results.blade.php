@@ -333,7 +333,7 @@
             @php $care = $presented['careImpact']; @endphp
             <section id="sec-care" {{ $panel('sec-care') }} aria-labelledby="care-heading" class="{{ $card }} scroll-mt-6">
                 <h2 id="care-heading" class="text-xl font-semibold text-gray-900">The risk of late-life care costs</h2>
-                <p class="mt-1 text-sm text-gray-600">These projections include the chance of needing residential or nursing care in later life. Most people pay nothing, but a minority face very large bills — so this is a <strong>fat tail</strong>, shown as a risk rather than a single expected figure.</p>
+                <p class="mt-1 text-sm text-gray-600">These projections include the chance of needing residential or nursing care in later life. Most people pay nothing, but a minority face very large bills — so this is <strong>a small chance of a very large bill</strong>, shown as a risk rather than a single expected figure.</p>
                 <dl class="mt-4 grid gap-4 sm:grid-cols-3">
                     <div class="rounded-md bg-gray-50 p-4">
                         <dt class="text-sm text-gray-500">Chance care costs you something</dt>
@@ -379,7 +379,7 @@
                 </div>
             </div>
             <p class="mt-1 text-sm text-gray-600">
-                The shaded bands are the range across thousands of simulated futures (10th–90th and 25th–75th percentiles); the solid line is the median, with half of futures above it and half below. Figures are in today's money.
+                The lighter band holds 8 in 10 of the possible futures; the darker band holds the middle half. The solid line is the typical outcome: half of futures end above it and half below. Figures are in today's money.
                 @if ($fan['usableBasis'])
                     This is your <strong>spendable</strong> money — it excludes your home, which can't pay day-to-day bills unless you sell.
                     @if ($fan['dipsNegative'])
@@ -395,6 +395,9 @@
             {{-- Key on the (non-ignored) outer div so a basis toggle replaces the subtree and
                  re-inits the chart with the new options; wire:ignore inside keeps every other
                  poll from disturbing the live canvas. --}}
+            @if ($fan['takeaway'])
+                <p data-takeaway class="mt-3 font-medium text-gray-900">{{ $fan['takeaway'] }}</p>
+            @endif
             <div class="mt-4" wire:key="fan-chart-{{ $includeHome ? 'incl' : 'excl' }}">
                 <div wire:ignore>
                     <div x-data="chart(@js($fan['options']))" role="img"
@@ -408,7 +411,7 @@
                 <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>
                 <div class="mt-2 overflow-x-auto" tabindex="0">
                     <table class="w-full text-sm">
-                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home, after pension tax)' : 'total wealth (incl. home equity)' }} (real pounds) by calendar year and percentile for {{ $fan['label'] }}</caption>
+                        <caption class="sr-only">Projected {{ $fan['usableBasis'] ? 'spendable money (excl. home, after pension tax)' : 'total wealth (incl. home equity)' }} (today's money) by calendar year: likely range, middle half and typical outcome, for {{ $fan['label'] }}</caption>
                         <thead>
                             <tr>
                                 <th scope="col" class="{{ $th }}">Year</th>
@@ -1416,7 +1419,7 @@
             @if ($stressTest['longLife'])
                 <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
                     <p class="text-sm font-medium text-amber-900">And if one of you lives a long time</p>
-                    <p class="mt-1 text-sm text-amber-900">The figures above carry each sequence for as long as the plan runs. Carried instead to a {{ lcfirst($stressTest['longLife']['label']) }} lifespan, where {{ $stressTest['longLife']['oddsPhrase'] }}, the plan survives <strong class="tabular-nums">{{ $stressTest['longLife']['survivalPct'] }}%</strong> of the same historical starts ({{ $stressTest['longLife']['survivedCount'] }} of {{ $stressTest['tested'] }}).
+                    <p class="mt-1 text-sm text-amber-900">The figures above carry each sequence for as long as the plan runs. Carried instead to a long lifespan, where {{ $stressTest['longLife']['oddsPhrase'] }}, the plan survives <strong class="tabular-nums">{{ $stressTest['longLife']['survivalPct'] }}%</strong> of the same historical starts ({{ $stressTest['longLife']['survivedCount'] }} of {{ $stressTest['tested'] }}).
                         @if ($stressTest['longLife']['worst'] && $stressTest['longLife']['worst']['ranOut'])
                             Its worst start ({{ $stressTest['longLife']['worst']['startYear'] }}) ran short after {{ $stressTest['longLife']['worst']['yearsLasted'] }} years.
                         @endif

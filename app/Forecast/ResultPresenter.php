@@ -209,10 +209,8 @@ final class ResultPresenter
     public static function planningHorizonBasis(?ForecastSettings $settings): string
     {
         $horizon = $settings?->planningHorizon ?? PlanningHorizon::DEFAULT;
-        $percentile = ((int) round($horizon->percentile() * 100)).'th';
 
-        return "a single path, run to the {$percentile}-percentile age at death of the last of you: "
-            .$horizon->oddsPhrase().'.';
+        return 'a single path, run to a set age at death for the last of you: '.$horizon->oddsPhrase().'.';
     }
 
     /**
@@ -608,7 +606,7 @@ final class ResultPresenter
                 break;
             }
         }
-        $yaxis = ['forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']];
+        $yaxis = ['forceNiceScale' => true, 'title' => ['text' => $basisLabel." (today's £)"]];
         if (! $dipsNegative) {
             $yaxis['min'] = 0;
         }
@@ -617,9 +615,9 @@ final class ResultPresenter
             'chart' => ['type' => 'rangeArea', 'height' => 380, 'toolbar' => ['show' => false]],
             'colors' => ['#93c5fd', '#3b82f6', '#1e3a8a'],
             'series' => [
-                ['name' => '10th–90th percentile', 'type' => 'rangeArea', 'data' => $band('p10', 'p90')],
-                ['name' => '25th–75th percentile', 'type' => 'rangeArea', 'data' => $band('p25', 'p75')],
-                ['name' => 'Median (50th)', 'type' => 'line', 'data' => $line],
+                ['name' => 'Likely range (8 in 10 futures)', 'type' => 'rangeArea', 'data' => $band('p10', 'p90')],
+                ['name' => 'Middle half of futures', 'type' => 'rangeArea', 'data' => $band('p25', 'p75')],
+                ['name' => 'Typical outcome', 'type' => 'line', 'data' => $line],
             ],
             'fill' => ['opacity' => [0.25, 0.4, 1]],
             'stroke' => ['curve' => 'straight', 'width' => [0, 0, 3], 'dashArray' => [0, 0, 0]],
@@ -646,6 +644,24 @@ final class ResultPresenter
             $options['annotations'] = ['yaxis' => self::belowZeroBand()];
         }
 
+        // What the typical (median) line says, in one sentence with its year and ages.
+        $takeaway = null;
+        $runsOut = null;
+        foreach ($series as $y) {
+            if ($y['p50']->isNegative()) {
+                $runsOut = $y['calendarYear'];
+                break;
+            }
+        }
+        $at = fn (int $year): string => isset($ageByYear[$year]) ? ", when you would be aged {$ageByYear[$year]}" : '';
+        if ($runsOut !== null) {
+            $takeaway = "Typical outcome: the money runs out in {$runsOut}{$at($runsOut)}.";
+        } elseif ($series !== []) {
+            $end = $series[array_key_last($series)];
+            $what = $usableBasis ? 'money to spend' : 'in total, home included';
+            $takeaway = "Typical outcome: you still have {$end['p50']->format()} {$what} in {$end['calendarYear']}{$at($end['calendarYear'])}.";
+        }
+
         return [
             'variant' => $variant,
             'label' => self::LABELS[$variant],
@@ -654,6 +670,7 @@ final class ResultPresenter
             'dipsNegative' => $dipsNegative,
             'options' => $options,
             'rows' => $rows,
+            'takeaway' => $takeaway,
         ];
     }
 
@@ -754,7 +771,7 @@ final class ResultPresenter
      * years (different death ages), so a plan that has ended shows a null/blank cell.
      *
      * @param  list<array{name: string, forecast: ForecastResult}>  $plans
-     * @return array{options: array<string, mixed>, years: list<int>, rows: list<array{name: string, cells: array<int, ?string>}>}
+     * @return array{options: array<string, mixed>, years: list<int>, rows: list<array{name: string, cells: array<int, ?string>}>, dipsNegative: bool, notCharted: int, takeaway: ?string}
      */
     public static function burndown(array $plans, array $annotations = []): array
     {
@@ -835,7 +852,7 @@ final class ResultPresenter
             'dataLabels' => ['enabled' => false],
             'markers' => ['size' => 0],
             'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            'yaxis' => ['title' => ['text' => 'Usable wealth, excl. home, after pension tax (real £)']],
+            'yaxis' => ['title' => ['text' => "Money you can spend, not counting the home, after pension tax (today's £)"]],
             'legend' => ['position' => 'top'],
         ];
 
@@ -860,7 +877,25 @@ final class ResultPresenter
             $options['annotations'] = $chartAnnotations;
         }
 
-        return ['options' => $options, 'years' => $years, 'rows' => $rows, 'dipsNegative' => $dipsNegative, 'notCharted' => count($plans) - count($series)];
+        // Card 0221: which plan has the most left to spend at the end, a fact read off the lines.
+        $takeaway = null;
+        $lastYear = $years === [] ? null : $years[array_key_last($years)];
+        if ($lastYear !== null) {
+            $best = null;
+            foreach ($plans as $i => $plan) {
+                $end = $plan['forecast']->years === [] ? null : $plan['forecast']->years[array_key_last($plan['forecast']->years)]->usableWealth();
+                if ($end !== null && ($best === null || $end->pence > $best[1]->pence)) {
+                    $best = [$plan['name'], $end];
+                }
+            }
+            $takeaway = match (true) {
+                $best === null => null,
+                count($plans) === 1 => "{$best[0]} ends with {$best[1]->format()} left to spend.",
+                default => "Of these plans, {$best[0]} ends with the most money left to spend: {$best[1]->format()}.",
+            };
+        }
+
+        return ['options' => $options, 'years' => $years, 'rows' => $rows, 'dipsNegative' => $dipsNegative, 'notCharted' => count($plans) - count($series), 'takeaway' => $takeaway];
     }
 
     /**
@@ -1894,7 +1929,7 @@ final class ResultPresenter
 
         // The axis suffix and the on-screen wording come from one place, so a chart can never
         // be drawn on one basis and captioned as the other.
-        $basis = $showNominal ? 'cash £' : 'real £';
+        $basis = $showNominal ? 'cash £' : "today's £";
 
         return [
             'income' => self::incomeStaircase($years, $ageByYear, $basis),
@@ -1962,11 +1997,28 @@ final class ResultPresenter
             return ['year' => $y->calendarYear, 'ages' => implode(' / ', $y->ages), 'income' => $income, 'total' => $total->format()];
         }, $years);
 
+        // The band paying the most in the first and the last year, so the handover reads in words.
+        $largest = function (int $i) use ($series): ?string {
+            $best = null;
+            foreach ($series as $band) {
+                if (($band['data'][$i]['y'] ?? 0) > 0 && ($best === null || $band['data'][$i]['y'] > $best['data'][$i]['y'])) {
+                    $best = $band;
+                }
+            }
+
+            return $best === null ? null : lcfirst($best['name']);
+        };
+        $lastIndex = array_key_last($years);
+        $from = $years === [] ? null : $largest(0);
+        $to = $years === [] ? null : $largest($lastIndex);
+
         return [
             'options' => self::stackedArea($series, $colours, "Income ({$basis})", $ageByYear),
             'sources' => $active,
             'sourceLabels' => self::SOURCE_LABELS,
             'rows' => $rows,
+            'takeaway' => $from === null || $to === null ? null
+                : "In {$years[0]->calendarYear} most of your income is {$from}; by {$years[$lastIndex]->calendarYear} most of it is {$to}.",
         ];
     }
 
@@ -2023,9 +2075,16 @@ final class ResultPresenter
             'total' => $y->totalWealth->format(),
         ], $years);
 
+        $first = $years[0] ?? null;
+        $last = $years[array_key_last($years)] ?? null;
+
         return [
             'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 3), "Wealth ({$basis})", $ageByYear),
             'rows' => $rows,
+            // Card 0220-0221: one sentence that says what the chart means, from its own figures.
+            'takeaway' => $first === null ? null
+                : "Everything you own comes to {$first->totalWealth->format()} in {$first->calendarYear} and "
+                    ."{$last->totalWealth->format()} in {$last->calendarYear}, of which {$last->homeEquity()->format()} is your home.",
         ];
     }
 
@@ -2060,9 +2119,15 @@ final class ResultPresenter
             'total' => $y->spendTarget->format(),
         ], $years);
 
+        $first = $years[0] ?? null;
+        $last = $years[array_key_last($years)] ?? null;
+
         return [
             'options' => self::stackedArea($series, array_slice(self::SERIES_COLOURS, 0, 2), "Spending ({$basis})", $ageByYear),
             'rows' => $rows,
+            'takeaway' => $first === null ? null
+                : "You plan to spend {$first->spendTarget->format()} in {$first->calendarYear}, of which "
+                    ."{$first->essentialSpend->format()} is essential, and {$last->spendTarget->format()} in {$last->calendarYear}.",
         ];
     }
 
@@ -4005,7 +4070,7 @@ final class ResultPresenter
                 'key' => 'propertyVolatility',
                 'label' => 'Your home\'s price swing (real)',
                 'value' => self::ratePct($set->singlePropertyVolatility()?->asPercent() ?? 0.0),
-                'note' => 'the spread the Monte Carlo moves YOUR home over, wider than the index because one home is not a market; a growth rate you entered for the home sets where this spread is centred, not how wide it is',
+                'note' => 'the spread of values YOUR home can take across the possible futures, wider than the index because one home is not a market; a growth rate you entered for the home sets where this spread is centred, not how wide it is',
             ]]);
         }
         // Show-your-working for the inflation draw (board card 0064). Two figures move every plan
@@ -4037,7 +4102,7 @@ final class ResultPresenter
                 'key' => 'salaryVolatility',
                 'label' => 'Salary growth volatility (real)',
                 'value' => self::ratePct($set->salaryGrowthVolatility->asPercent()),
-                'note' => 'the year-to-year spread the Monte Carlo samples a working person\'s pay rises over; the central projection uses the mean above',
+                'note' => 'the year-to-year spread the possible futures give a working person\'s pay rises; the central projection uses the mean above',
             ]]);
         }
 

@@ -33,8 +33,8 @@
     <h2 id="how-far-heading" class="text-xl font-semibold text-gray-900">How far can we go?</h2>
     <p class="mt-1 text-sm text-gray-600">
         Pick one thing you could change, drag it, and watch how the money holds up. The line is a
-        quick central estimate that updates as you drag; ask for <em>the limit</em> to run the full
-        Monte&nbsp;Carlo and see how far you can push before the odds slip below your target.
+        quick central estimate that updates as you drag; ask for <em>the limit</em> to run all
+        the possible futures and see how far you can push before the odds slip below your target.
     </p>
 
     {{-- Plain-language headline: a 10-dot natural-frequency picture of the current plan's odds,
@@ -110,6 +110,9 @@
         {{-- The instant deterministic net-position line. Keyed on the lever + value so a drag
              replaces the subtree and re-inits the chart with the new line; wire:ignore inside keeps
              the threshold poll from disturbing the canvas. --}}
+        @if ($netPosition['takeaway'])
+            <p data-takeaway class="mt-4 font-medium text-gray-900">{{ $netPosition['takeaway'] }}</p>
+        @endif
         <div class="mt-4" wire:key="np-{{ $selectedLever }}-{{ $slider['value'] }}">
             <div wire:ignore>
                 <div x-data="chart(@js($netPosition['options']))" role="img"
@@ -167,7 +170,7 @@
                 class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
                 {{ $isCare ? 'Compare care off vs care on' : 'Find the limit for “'.$selectedLabel.'”' }}
             </button>
-            <p class="mt-1 text-xs text-gray-500">Runs the full Monte&nbsp;Carlo across the range in the background — a minute or so.</p>
+            <p class="mt-1 text-xs text-gray-500">Runs all the possible futures across the range in the background — a minute or so.</p>
         @elseif (! $threshold->status->isTerminal())
             <div wire:poll.1500ms="pollThreshold">
                 <div class="flex items-center justify-between text-sm text-gray-700">
@@ -221,7 +224,7 @@
                 <details class="mt-4">
                     <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers</summary>
                     <div class="mt-2 flex items-center justify-between">
-                        <p class="text-xs text-gray-500">Each state is a full Monte&nbsp;Carlo run; the range is its 95% confidence interval. The two runs use independent random draws, so read the difference as real only when the ranges do not overlap.</p>
+                        <p class="text-xs text-gray-500">Each state is a full run of possible futures; the range is its 95% confidence interval. The two runs use independent random draws, so read the difference as real only when the ranges do not overlap.</p>
                         <a href="{{ $csvUrl }}" class="text-sm text-blue-700 underline">Download CSV</a>
                     </div>
                     <div class="mt-2 overflow-x-auto" tabindex="0">
@@ -282,7 +285,7 @@
 
                 <p class="mt-3 text-sm text-gray-800">{{ $meter['caption'] }}</p>
                 @if ($meter['bandLow'] && $meter['bandHigh'])
-                    <p class="mt-1 text-xs text-gray-500">The exact crossing is somewhere between {{ $meter['bandLow'] }} and {{ $meter['bandHigh'] }} (Monte&nbsp;Carlo leaves a little uncertainty).</p>
+                    <p class="mt-1 text-xs text-gray-500">The exact crossing is somewhere between {{ $meter['bandLow'] }} and {{ $meter['bandHigh'] }} (working from possible futures leaves a little uncertainty).</p>
                 @endif
                 <button type="button" wire:click="findLimit" class="mt-2 text-xs text-blue-700 underline">Recompute</button>
             </div>
@@ -291,6 +294,9 @@
             @if ($sCurve)
                 <details class="mt-4">
                     <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the full sweep (the numbers)</summary>
+                    @if ($sCurve['takeaway'])
+                        <p data-takeaway class="mt-3 font-medium text-gray-900">{{ $sCurve['takeaway'] }}</p>
+                    @endif
                     <div class="mt-3" wire:key="scurve-{{ $threshold->id }}">
                         <div wire:ignore>
                             <div x-data="chart(@js($sCurve['options']))" role="img"
@@ -298,7 +304,7 @@
                         </div>
                     </div>
                     <div class="mt-2 flex items-center justify-between">
-                        <p class="text-xs text-gray-500">Each point is a full Monte&nbsp;Carlo run; the range is its 95% confidence interval.</p>
+                        <p class="text-xs text-gray-500">Each point is a full run of possible futures; the range is its 95% confidence interval.</p>
                         <a href="{{ $csvUrl }}" class="text-sm text-blue-700 underline">Download CSV</a>
                     </div>
                     <div class="mt-2 overflow-x-auto" tabindex="0">
@@ -340,7 +346,7 @@
             <p class="mt-1 text-sm text-gray-600">
                 A single limit hides a pairing: how much the new home can cost depends on when the working
                 partner retires. This maps the two together — every cell of the map is its own full
-                Monte&nbsp;Carlo run on the same pinned draws.
+                run of possible futures, on the same random draws.
             </p>
 
             @if (! $frontier || ($frontier->status !== \App\Enums\SimulationStatus::Done && $frontier->status->isTerminal()))
@@ -353,7 +359,7 @@
                     class="mt-3 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
                     Map the trade-off
                 </button>
-                <p class="mt-1 text-xs text-gray-500">Runs a full Monte&nbsp;Carlo for every cell of the map in the background — expect several minutes.</p>
+                <p class="mt-1 text-xs text-gray-500">Runs all the possible futures for every cell of the map in the background — expect several minutes.</p>
             @elseif (! $frontier->status->isTerminal())
                 <div wire:poll.1500ms="pollThreshold" class="mt-3">
                     <div class="flex items-center justify-between text-sm text-gray-700">
@@ -395,7 +401,7 @@
                         <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the full map (the numbers)</summary>
                         <div class="mt-2 flex items-center justify-between gap-4">
                             <p class="text-xs text-gray-500">
-                                Each cell is a full Monte&nbsp;Carlo run of {{ number_format($frontierView['pathsPerCell']) }} futures:
+                                Each cell is a full run of possible futures of {{ number_format($frontierView['pathsPerCell']) }} futures:
                                 the chance the money lasts at that pairing. Tinted cells at or above your
                                 {{ $frontierView['targetPct'] }} target sit on the on-track side; the boundary between the
                                 two tints is the limit.

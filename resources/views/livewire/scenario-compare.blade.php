@@ -8,7 +8,7 @@
             <button type="button" wire:click="runFullFamily" wire:loading.attr="disabled" wire:target="runFullFamily"
                 @disabled($familyRun['active'])
                 class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50"
-                title="Queue a fresh 10,000-path Monte Carlo run for every plan here — handy after a model change so each plan's results page shows current figures.">
+                title="Run 10,000 possible futures again for every plan here — handy after a model change so each plan's results page shows current figures.">
                 <span wire:loading.remove wire:target="runFullFamily">{{ $familyRun['active'] ? 'Running…' : 'Re-run all '.$planCount.' (full 10k)' }}</span>
                 <span wire:loading wire:target="runFullFamily">Queuing…</span>
             </button>
@@ -86,7 +86,7 @@
             @endif
 
             @unless ($familyRun['active'])
-                <p class="mt-3 text-xs text-gray-500">Open any plan's results to see its refreshed Monte Carlo — this comparison already reflects the current model.</p>
+                <p class="mt-3 text-xs text-gray-500">Open any plan's results to see its refreshed possible futures — this comparison already reflects the current model.</p>
             @endunless
         </div>
     @endif
@@ -233,6 +233,9 @@
              and re-inits the chart with the filtered series; wire:ignore inside keeps every poll
              from disturbing the live canvas. Without the key the wire:ignore'd chart would keep
              plotting the plans the server already dropped. --}}
+        @if ($burndown['takeaway'])
+            <p data-takeaway class="mt-3 font-medium text-gray-900">{{ $burndown['takeaway'] }}</p>
+        @endif
         <div class="mt-4" wire:key="burndown-{{ $hideNonViable ? 'viable' : 'all' }}">
             <div wire:ignore>
                 <div x-data="chart(@js($burndown['options']))" role="img"
@@ -346,6 +349,7 @@
                         </div>
 
                         {{-- Net-position sparkline: a glanceable trend; the numbers are in the drill-down + CSV. --}}
+                        <p data-takeaway class="mt-3 text-sm text-gray-900">@if ($row['sparkline']['runsShortYear'])Typical outcome: the money runs short around {{ $row['sparkline']['runsShortYear'] }}.@else Typical outcome: the money lasts to {{ $row['sparkline']['endYear'] }}.@endif</p>
                         <div class="mt-3" wire:ignore>
                             <div x-data="chart(@js($row['sparkline']['options']))" role="img"
                                  aria-label="Spendable net position over time for {{ $row['name'] }}.@if ($row['sparkline']['runsShortYear']) It dips below £0 around {{ $row['sparkline']['runsShortYear'] }}.@else It stays above £0 to {{ $row['sparkline']['endYear'] }}.@endif The figures are in the drill-down below."></div>

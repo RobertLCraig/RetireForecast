@@ -38,7 +38,7 @@ final class ThresholdPresenter
      * cashflow ladder and Compare — it can't drift. Adds the £-abbreviating axis and recolours
      * the death vertical off the shortfall-red band.
      *
-     * @return array{options: array<string, mixed>, rows: list<array{year: int, net: ?string}>, dipsNegative: bool, runsOutYear: ?int}
+     * @return array{options: array<string, mixed>, rows: list<array{year: int, net: ?string}>, dipsNegative: bool, runsOutYear: ?int, takeaway: ?string}
      */
     public static function netPosition(ForecastResult $forecast, Household $household, string $label): array
     {
@@ -54,11 +54,19 @@ final class ThresholdPresenter
             $table[] = ['year' => $year, 'net' => $cells[$year] ?? null];
         }
 
+        $end = $table === [] ? null : $table[array_key_last($table)];
+
         return [
             'options' => $chart['options'],
             'rows' => $table,
             'dipsNegative' => $chart['dipsNegative'],
             'runsOutYear' => $forecast->depletionCalendarYear, // null = the money lasts to the end
+            // What the line says, in one sentence (card 0221).
+            'takeaway' => match (true) {
+                $forecast->depletionCalendarYear !== null => "At this setting the money runs out in {$forecast->depletionCalendarYear}.",
+                $end !== null => "At this setting the money lasts to {$end['year']}, with {$end['net']} left to spend.",
+                default => null,
+            },
         ];
     }
 
@@ -175,7 +183,7 @@ final class ThresholdPresenter
      * its Monte Carlo confidence interval). This is the disclosed "show the full sweep" view — a
      * percentage axis is fine here; the guardrail against a bare-percentage HEADLINE lives above.
      *
-     * @return array{options: array<string, mixed>, rows: list<array{value: string, p: float, ciLow: float, ciHigh: float, paths: int}>}
+     * @return array{options: array<string, mixed>, rows: list<array{value: string, p: float, ciLow: float, ciHigh: float, paths: int}>, takeaway: ?string}
      */
     public static function sCurve(ThresholdOutcome $outcome, LeverKey $lever): array
     {
@@ -236,7 +244,15 @@ final class ThresholdPresenter
             'paths' => $p->paths,
         ], $curve->points);
 
-        return ['options' => $options, 'rows' => $rows];
+        $first = $rows[0] ?? null;
+        $last = $rows === [] ? null : $rows[array_key_last($rows)];
+
+        return [
+            'options' => $options,
+            'rows' => $rows,
+            'takeaway' => $first === null ? null
+                : "The chance the money lasts goes from {$first['p']}% at {$first['value']} to {$last['p']}% at {$last['value']}.",
+        ];
     }
 
     /**

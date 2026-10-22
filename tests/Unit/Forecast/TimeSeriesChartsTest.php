@@ -283,7 +283,7 @@ final class TimeSeriesChartsTest extends TestCase
         $this->assertSame('cash pounds', $nominal['basisShort']);
         $this->assertSame('real pounds', $real['basisShort']);
         $this->assertSame('Spending (cash £)', $nominal['costs']['options']['yaxis']['title']['text']);
-        $this->assertSame('Spending (real £)', $real['costs']['options']['yaxis']['title']['text']);
+        $this->assertSame("Spending (today's £)", $real['costs']['options']['yaxis']['title']['text']);
     }
 
     public function test_the_nominal_view_still_reconciles_and_lists_every_source(): void

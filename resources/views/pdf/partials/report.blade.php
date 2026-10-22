@@ -1033,8 +1033,7 @@
         @endif
         @if ($stressTest['longLife'])
             <p class="note"><strong>And if one of you lives a long time.</strong> The figures above carry each
-                sequence for as long as the plan runs. Carried instead to a
-                {{ lcfirst($stressTest['longLife']['label']) }} lifespan, where
+                sequence for as long as the plan runs. Carried instead to a long lifespan, where
                 {{ $stressTest['longLife']['oddsPhrase'] }}, the plan survives
                 {{ $stressTest['longLife']['survivalPct'] }}% of the same historical starts
                 ({{ $stressTest['longLife']['survivedCount'] }} of {{ $stressTest['tested'] }}).
