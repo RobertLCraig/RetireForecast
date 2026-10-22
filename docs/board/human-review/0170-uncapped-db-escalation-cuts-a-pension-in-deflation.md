@@ -1,5 +1,9 @@
 # An uncapped DB pension is cut in a deflation year
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Found by the 2026-09-05 breakage review of card 0035, repeated by the 2026-09-28 manager pass, and
 still true on 2026-10-06. `PensionEscalationBasis::increase()` floors the two capped cases at zero,
@@ -44,3 +48,5 @@ OUT-OF-SCOPE: none
 Second take, same block as the first. The Plan says to source the rule before adding the floor. This unattended session has no web again: WebFetch of legislation.gov.uk/ukpga/1995/26/section/51 was refused. A grep of docs/ (outside the board) still finds no source on whether a CPI- or RPI-linked pension in payment may be cut in deflation. I did not add the floor from memory, because the card asks for a sourced rule.
 The first take's red test (dbIncomeByYear(Cpi, -2.0) vs CpiCappedAt5, assertLessThanOrEqual on [2046]) still describes the fault and can be re-added as-is.
 Next: do this card in an attended session with web, or mark it not_for_the_loop. Source s.51 Pensions Act 1995 and the Pensions Increase (Review) Orders, write the rule into ASSUMPTIONS §18, then add the test and the max(0.0, ...) floor on Cpi and Rpi in PensionEscalationBasis::increase(). Expect an ENGINE_VERSION bump and a GoldenMasterTest re-pin.
+
+**2026-10-22** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
