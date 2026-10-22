@@ -183,6 +183,36 @@ final class Interpretation
         ];
     }
 
+    /**
+     * "What to do next" (card 0218): one item per flag the results page already computes, each
+     * with when to act and a source. A flag that does not apply adds nothing.
+     *
+     * @param  array<string, mixed>|null  $pensionCredit  {@see ResultPresenter::pensionCreditGuidance()}
+     * @param  array<string, mixed>|null  $shock  the lump-sum tax shock panel
+     * @return list<array{what: string, when: string, source: string}>
+     */
+    public static function nextSteps(?array $pensionCredit, ?array $shock): array
+    {
+        $steps = [];
+        if ($pensionCredit !== null && $pensionCredit['howToClaim'] !== []) {
+            $steps[] = [
+                'what' => 'Claim Pension Credit. A claim can be backdated up to 3 months, so do not wait.',
+                'when' => 'From 4 months before State Pension age, or as soon as the plan is eligible.',
+                'source' => $pensionCredit['source'],
+            ];
+        }
+        if ($shock !== null && $shock['hasOverDeduction']) {
+            $steps[] = [
+                'what' => "Reclaim the {$shock['overDeduction']} of tax taken too early from your first pension withdrawal"
+                    .($shock['reclaimForm'] ? ", on HMRC form {$shock['reclaimForm']}." : '.'),
+                'when' => 'After that first withdrawal is paid.',
+                'source' => 'https://www.gov.uk/claim-pension-tax-refund',
+            ];
+        }
+
+        return $steps;
+    }
+
     private static function lasts(ForecastResult $f): int
     {
         return $f->depletionCalendarYear === null ? 1 : 0;

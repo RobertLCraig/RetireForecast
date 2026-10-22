@@ -19,6 +19,7 @@
         ['id' => 'sec-capacity', 'tab' => 'verdict', 'label' => 'How much you could lose', 'show' => (bool) ($capacityForLoss ?? null)],
         ['id' => 'sec-explore', 'tab' => 'verdict', 'label' => 'Build a what-if', 'show' => $canMakeWhatIf],
         ['id' => 'sec-how-far', 'tab' => 'verdict', 'label' => 'How far can we go?', 'show' => true],
+        ['id' => 'sec-next-steps', 'tab' => 'verdict', 'label' => 'What to do next', 'show' => (bool) $nextSteps],
 
         ['id' => 'sec-sale', 'tab' => 'money', 'label' => 'If you sell', 'show' => (bool) $saleExplainer],
         ['id' => 'sec-milestones', 'tab' => 'money', 'label' => 'Life events', 'show' => (bool) $milestones],
@@ -144,6 +145,25 @@
             <p class="mt-2 text-lg">Your essential spending is covered in <strong class="tabular-nums">{{ $hero['lastsOutOfTen'] }} out of 10</strong> possible futures.</p>
             @if ($hero['medianDepletionYear'])
                 <p class="mt-1 text-sm">Where it runs short, that is typically by {{ $hero['medianDepletionYear'] }}@if ($hero['depletionAges']), when you would be aged {{ $hero['depletionAges'] }}@endif.</p>
+            @endif
+            {{-- How much can we safely spend? (board card 0217). The same solver as /afford. --}}
+            @if ($safeSpend)
+                <div data-safe-spend class="mt-4 rounded-md bg-white/70 px-4 py-3 text-gray-900">
+                    @if ($safeSpend['sustainable'])
+                        <p class="text-lg">
+                            On top of your essentials, you could spend about
+                            <strong class="tabular-nums">{{ $safeSpend['sustainable']['monthly']->format() }} a month</strong>
+                            ({{ $safeSpend['sustainable']['annual']->format() }} a year){{ $safeSpend['sustainable']['ceilingHit'] ? ' or more' : '' }}
+                            on things you choose, every year, without running short. In today's money.
+                        </p>
+                    @else
+                        <p class="text-lg">This plan cannot cover your essentials every year, even with nothing spent on extras.</p>
+                    @endif
+                    @if ($safeSpend['spendable']['survivor'])
+                        <p class="mt-1 text-sm">If one of you is on your own, from about {{ $safeSpend['spendable']['survivorFromYear'] }}, this plan pays <strong class="tabular-nums">{{ $safeSpend['spendable']['survivor']['monthlyAllowance'] }} a month</strong> to live on.</p>
+                    @endif
+                    <p class="mt-1 text-xs text-gray-600">Worked out on the expected path, not the unlucky futures: read it beside the "out of 10" figure above. <a href="{{ route('scenarios.afford', $scenario->baseScenario()) }}" class="text-blue-700 underline">More on what you can afford</a>.</p>
+                </div>
             @endif
         </section>
     @endif
@@ -1791,6 +1811,20 @@
     <div {{ $panel('sec-how-far') }}>
         <livewire:threshold-explorer :scenario="$scenario" />
     </div>
+
+    @if ($nextSteps)
+        <section id="sec-next-steps" {{ $panel('sec-next-steps') }} data-next-steps aria-labelledby="next-steps-heading" class="{{ $card }} scroll-mt-6">
+            <h2 id="next-steps-heading" class="text-lg font-semibold text-gray-900">What to do next</h2>
+            <ul class="mt-3 space-y-3">
+                @foreach ($nextSteps as $step)
+                    <li>
+                        <p class="text-gray-900">{{ $step['what'] }}</p>
+                        <p class="text-sm text-gray-600">When: {{ $step['when'] }} <a href="{{ $step['source'] }}" class="text-blue-700 underline" target="_blank" rel="noopener">Source</a></p>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     <div {{ $panel('sec-sources') }}>
         <x-sources-and-contacts id="sec-sources" class="scroll-mt-6" :show-mortgage="$sourcesShowMortgage" :show-cgt="$sourcesShowCgt" :show-benefits-debt="$sourcesShowBenefitsDebt" />

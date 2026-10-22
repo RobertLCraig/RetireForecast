@@ -6,6 +6,7 @@ namespace Tests\Feature\Livewire;
 
 use App\Assistant\ScenarioContext;
 use App\DecisionSupport\CapacityForLoss;
+use App\DecisionSupport\SustainableSpend;
 use App\Enums\ScenarioStatus;
 use App\Enums\SimulationStatus;
 use App\Export\ScenarioReport;
@@ -74,6 +75,32 @@ class ScenarioResultsTest extends TestCase
             ->set('previewPaths', 30)
             ->call('preview')
             ->assertSeeHtmlInOrder(['Essentials covered', 'data-verdict-detail', 'Essentials always met', 'Full spending met every year', 'Chance of running out']);
+    }
+
+    public function test_the_verdict_tab_shows_the_safe_monthly_spend(): void
+    {
+        // Board card 0217: "how much can we spend?" is answered on the results page, monthly and
+        // yearly, in today's money, not only on /afford.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSeeHtmlInOrder(['data-verdict-hero', 'data-safe-spend'])
+            ->assertSeeHtml("In today's money.");
+    }
+
+    public function test_the_verdict_safe_spend_matches_afford(): void
+    {
+        // One solver, one figure: the results page and /afford read the same answer.
+        $scenario = $this->scenario();
+        $sustainable = app(SustainableSpend::class)->forScenario($scenario);
+        $this->assertNotNull($sustainable, 'the fixture plan must be affordable for this test to bite');
+        $monthly = $sustainable['monthly']->format();
+
+        Livewire::test(ScenarioResults::class, ['scenario' => $scenario])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSee($monthly.' a month');
+        $this->get(route('scenarios.afford', $scenario))->assertOk()->assertSee($monthly.' a month');
     }
 
     public function test_the_contingent_income_panel_and_claim_prompt_render_on_the_results_page(): void

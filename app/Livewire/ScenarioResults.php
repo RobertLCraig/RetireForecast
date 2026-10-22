@@ -8,6 +8,7 @@ use App\Compliance\Interpretation;
 use App\DecisionSupport\AdviceCostComparison;
 use App\DecisionSupport\CapacityForLoss;
 use App\DecisionSupport\ProtectionGap;
+use App\DecisionSupport\SustainableSpend;
 use App\Enums\ScenarioStatus;
 use App\Export\ExportDisclaimer;
 use App\Forecast\AssumptionComparison;
@@ -459,8 +460,13 @@ class ScenarioResults extends Component
         // scrolls to something the server rendered hidden.
         $inTab = fn (string $tab, string $anchor): string => route('scenarios.results', ['scenario' => $this->scenario, 'tab' => $tab]).'#'.$anchor;
 
+        $shock = app(LumpSumTaxShock::class)->assess($this->scenario);
+        $pensionCredit = ResultPresenter::pensionCreditGuidance($forecast);
+
         return view('livewire.scenario-results', [
             'tabs' => self::TABS,
+            // "What to do next" (card 0218): advice, so only behind the interpret gate.
+            'nextSteps' => Gate::allows('interpret') ? Interpretation::nextSteps($pensionCredit, $shock) : [],
             'run' => $run,
             'resultsRun' => $resultsRun,
             'runDiff' => $runDiff,
@@ -475,8 +481,14 @@ class ScenarioResults extends Component
                 'changes' => WhatIfChanges::of($this->scenario),
                 'orphans' => $this->scenario->orphanedOverrides(),
             ] : null,
+            // "How much can we safely spend?" on the verdict (board card 0217): the SAME solver the
+            // /afford page reads, never recomputed another way, plus what the plan pays a survivor.
+            'safeSpend' => $presented === null ? null : [
+                'sustainable' => app(SustainableSpend::class)->forScenario($this->scenario),
+                'spendable' => ResultPresenter::spendableSummary($ladderContext->forecasts[$this->scenario->variant->value] ?? $forecast),
+            ],
             // Headline output #1: deterministic, independent of any Monte Carlo run.
-            'shock' => app(LumpSumTaxShock::class)->assess($this->scenario),
+            'shock' => $shock,
             // Compare-assumptions overlay: also deterministic, so it shows immediately.
             'sensitivity' => app(AssumptionComparison::class)->compare($this->scenario),
             // The 3-tier spending budget echoed back from the form-state (essential /
@@ -494,7 +506,7 @@ class ScenarioResults extends Component
             'stressTest' => $forecaster->historicalStressTestPanel($this->scenario),
             // How to claim the Pension Credit the forecast models (only when it credits any) —
             // it is means-tested, so it has to be applied for, and is heavily under-claimed.
-            'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),
+            'pensionCredit' => $pensionCredit,
             // Inheritance Tax on the estate at death (only when the IHT toggle is on): the estate
             // valued, the nil-rate bands applied, and the tax due at each death — relationship-
             // status aware. Deterministic, so it shows immediately like the ladder.

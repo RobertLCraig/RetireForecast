@@ -103,6 +103,19 @@
                 futures ({{ $mcRun['mode'] }} run, seed {{ $mcRun['seed'] }}@if ($mcRun['date']), run {{ $mcRun['date'] }}@endif).</p>
         @endif
         <p class="verdict verdict-{{ $primary['verdict']['level'] }}">{{ $primary['verdict']['text'] }}</p>
+        @if ($safeSpend)
+            @if ($safeSpend['sustainable'])
+                <p>On top of your essentials, you could spend about <strong>{{ $safeSpend['sustainable']['monthly']->format() }} a month</strong>
+                    ({{ $safeSpend['sustainable']['annual']->format() }} a year){{ $safeSpend['sustainable']['ceilingHit'] ? ' or more' : '' }}
+                    on things you choose, every year, without running short. In today's money.</p>
+            @else
+                <p>This plan cannot cover your essentials every year, even with nothing spent on extras.</p>
+            @endif
+            @if ($safeSpend['spendable']['survivor'])
+                <p>If one of you is on your own, from about {{ $safeSpend['spendable']['survivorFromYear'] }}, this plan pays <strong>{{ $safeSpend['spendable']['survivor']['monthlyAllowance'] }} a month</strong> to live on.</p>
+            @endif
+            <p class="tile-note">Worked out on the expected path, not the unlucky futures.</p>
+        @endif
 
         <h3>{{ $primary['label'] }}</h3>
         <table class="tiles">
@@ -1488,6 +1501,17 @@
         </ul>
     @endif
 </div>
+
+@if ($nextSteps)
+    <div class="card">
+        <h2>What to do next</h2>
+        <ul>
+            @foreach ($nextSteps as $step)
+                <li>{{ $step['what'] }} When: {{ $step['when'] }} Source: {{ $step['source'] }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 <div class="callout">
     <strong>Guidance only, not financial advice.</strong>

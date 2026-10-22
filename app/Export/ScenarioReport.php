@@ -8,6 +8,7 @@ use App\Compliance\Interpretation;
 use App\DecisionSupport\AdviceCostComparison;
 use App\DecisionSupport\CapacityForLoss;
 use App\DecisionSupport\ProtectionGap;
+use App\DecisionSupport\SustainableSpend;
 use App\Enums\ScenarioStatus;
 use App\Forecast\AssumptionComparison;
 use App\Forecast\LadderContext;
@@ -150,9 +151,13 @@ class ScenarioReport
             }
         }
 
+        $shock = app(LumpSumTaxShock::class)->assess($scenario);
+        $pensionCredit = ResultPresenter::pensionCreditGuidance($forecast);
+
         return [
             'scenario' => $scenario,
             'householdName' => $scenario->householdName(),
+            'nextSteps' => Gate::allows('interpret') ? Interpretation::nextSteps($pensionCredit, $shock) : [],
             'generatedAt' => now()->format('j F Y'),
             // For a what-if (delta-child): what it changed from its base, so the printed report
             // reads as a variation of the base rather than an independent plan.
@@ -201,12 +206,17 @@ class ScenarioReport
             'interpretation' => $presented === null || ! Gate::allows('interpret')
                 ? null
                 : Interpretation::readouts($this->resultsByVariant($scenario->latestCompletedRun())),
-            'shock' => app(LumpSumTaxShock::class)->assess($scenario),
+            // The safe monthly spend the results page leads with (card 0217): the /afford solver.
+            'safeSpend' => $presented === null ? null : [
+                'sustainable' => app(SustainableSpend::class)->forScenario($scenario),
+                'spendable' => ResultPresenter::spendableSummary($primaryForecast),
+            ],
+            'shock' => $shock,
             'sensitivity' => app(AssumptionComparison::class)->compare($scenario),
             'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState(), $household),
             'plsa' => ResultPresenter::plsaBenchmark($household),
             'incomeFloor' => ResultPresenter::incomeFloor($forecast),
-            'pensionCredit' => ResultPresenter::pensionCreditGuidance($forecast),
+            'pensionCredit' => $pensionCredit,
             // Inheritance Tax on the estate (only when the toggle is on) — same deterministic
             // source as the screen, so the printed figure matches.
             'iht' => ResultPresenter::ihtPanel($forecast->iht, $household, $forecast),
