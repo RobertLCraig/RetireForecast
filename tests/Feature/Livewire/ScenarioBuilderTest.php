@@ -1515,6 +1515,58 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /** @param array<string, mixed> $state */
+    public function test_the_builder_names_pension_options_in_plain_words(): void
+    {
+        // Board card 0224: a layperson should not meet UFPLS or PCLS as a bare label.
+        $html = $this->fill(BuilderStateFixture::minimalValid())
+            ->call('addPension', 'dc')
+            ->call('addWithdrawal', 0)
+            ->set('step', 2)
+            ->html();
+
+        $this->assertStringNotContainsString('UFPLS', $html);
+        $this->assertStringNotContainsString('PCLS', $html);
+        $this->assertStringContainsString('Take lump sums (a quarter tax-free each time)', $html);
+        $this->assertStringContainsString('Take the tax-free quarter in one go', $html);
+    }
+
+    public function test_the_primary_option_help_does_not_promise_three_runs(): void
+    {
+        // Only the chosen option is run; another needs a what-if.
+        $this->get(route('scenarios.create'))->assertOk()
+            ->assertDontSee('All three are run')
+            ->assertSee('Pick one. Make a what-if to compare another.');
+    }
+
+    public function test_folded_builder_fields_keep_their_values(): void
+    {
+        // Folding a field away is HTML only: it stays bound, so its value is saved as entered.
+        $component = $this->fill(['baseTaxYear' => '2025-26'] + BuilderStateFixture::minimalValid())
+            ->call('addPension', 'dc')
+            ->set('pensions.0.currentValue', '200000')
+            ->set('pensions.0.earliestAccessAge', '57')
+            ->set('pensions.0.reliefMethod', 'net_pay')
+            ->set('pensions.0.growthAssumptionOverride', '4.5')
+            ->set('pensions.0.pclsTakenToDate', '10000')
+            ->set('pensions.0.crystallisedValue', '50000');
+
+        // The fields sit in closed folds.
+        $this->assertMatchesRegularExpression('/<details data-advanced[^>]*>/', $component->set('step', 1)->html());
+        $this->assertDoesNotMatchRegularExpression('/<details data-advanced[^>]*\sopen[\s>]/', $component->html());
+        $this->assertMatchesRegularExpression('/<details data-more-options[^>]*>/', $component->set('step', 2)->html());
+        $this->assertDoesNotMatchRegularExpression('/<details data-more-options[^>]*\sopen[\s>]/', $component->html());
+
+        $component->call('save')->assertHasNoErrors();
+
+        $saved = Scenario::firstOrFail()->builder_state;
+        $this->assertSame('2025-26', $saved['baseTaxYear']);
+        $dc = collect($saved['pensions'])->firstWhere('subtype', 'dc');
+        $this->assertSame('net_pay', $dc['reliefMethod']);
+        $this->assertSame('4.5', $dc['growthAssumptionOverride']);
+        $this->assertSame('10000', $dc['pclsTakenToDate']);
+        $this->assertSame('50000', $dc['crystallisedValue']);
+    }
+
     private function fill(array $state): Testable
     {
         $component = Livewire::test(ScenarioBuilder::class);

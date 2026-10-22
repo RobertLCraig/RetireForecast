@@ -224,31 +224,38 @@
                         @error('region') <p id="region-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label for="baseTaxYear" class="{{ $label }}">Base tax year</label>
-                        <select id="baseTaxYear" wire:model="baseTaxYear" class="{{ $field }}" @error('baseTaxYear') aria-invalid="true" aria-describedby="baseTaxYear-error" @enderror>
-                            <option value="2025-26">2025-26</option>
-                            <option value="2026-27">2026-27</option>
-                        </select>
-                        @error('baseTaxYear') <p id="baseTaxYear-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
                         <label for="variant" class="{{ $label }}">Primary option</label>
                         <select id="variant" wire:model="variant" class="{{ $field }}">
                             <option value="stay_put">Stay put</option>
                             <option value="buy_outright">Sell &amp; buy cheaper outright</option>
                             <option value="rent">Sell &amp; rent</option>
                         </select>
-                        <p class="mt-1 text-xs text-gray-500">All three are run and compared; this is just the headline.</p>
+                        <p class="mt-1 text-xs text-gray-500">Pick one. Make a what-if to compare another.</p>
                     </div>
-                    <div>
-                        <label for="assumptionSetId" class="{{ $label }}">Assumption set</label>
-                        <select id="assumptionSetId" wire:model="assumptionSetId" class="{{ $field }}">
-                            <option value="">Engine default</option>
-                            @foreach ($assumptionSets as $set)
-                                <option value="{{ $set->id }}">{{ $set->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    {{-- Board card 0224: settings most people never change, folded away. Still bound,
+                         so a value set here is kept when the box is closed. Opens on an error. --}}
+                    <details data-advanced class="sm:col-span-2" @if ($errors->has('baseTaxYear')) open @endif>
+                        <summary class="cursor-pointer text-sm font-medium text-blue-700">Advanced settings</summary>
+                        <div class="mt-2 grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="baseTaxYear" class="{{ $label }}">Tax year to start from</label>
+                                <select id="baseTaxYear" wire:model="baseTaxYear" class="{{ $field }}" @error('baseTaxYear') aria-invalid="true" aria-describedby="baseTaxYear-error" @enderror>
+                                    <option value="2025-26">2025-26</option>
+                                    <option value="2026-27">2026-27</option>
+                                </select>
+                                @error('baseTaxYear') <p id="baseTaxYear-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label for="assumptionSetId" class="{{ $label }}">Growth and inflation figures</label>
+                                <select id="assumptionSetId" wire:model="assumptionSetId" class="{{ $field }}">
+                                    <option value="">Standard (the tool's own figures)</option>
+                                    @foreach ($assumptionSets as $set)
+                                        <option value="{{ $set->id }}">{{ $set->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </details>
                     @if (count($people) > 1)
                     <div>
                         <label for="relationshipStatus" class="{{ $label }}">Relationship</label>
@@ -736,6 +743,11 @@
                                     <label for="pensions-{{ $i }}-employerContribution" class="{{ $label }}">Employer contribution (£/yr)</label>
                                     <input id="pensions-{{ $i }}-employerContribution" type="text" inputmode="decimal" wire:model="pensions.{{ $i }}.employerContribution" class="{{ $field }}">
                                 </div>
+                                {{-- Board card 0224: the less common pension details, folded away but still
+                                     bound, so their values are kept. Opens when one of them has an error. --}}
+                                <details data-more-options class="sm:col-span-2 lg:col-span-3" @if ($errors->has('pensions.'.$i.'.nominatedBeneficiary') || $errors->has('pensions.'.$i.'.crystallisedValue')) open @endif>
+                                <summary class="cursor-pointer text-sm font-medium text-blue-700">More options for this pension</summary>
+                                <div class="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 <div>
                                     <label for="pensions-{{ $i }}-reliefMethod" class="{{ $label }}">Tax relief on your contribution</label>
                                     <select id="pensions-{{ $i }}-reliefMethod" wire:model="pensions.{{ $i }}.reliefMethod" class="{{ $field }}">
@@ -770,15 +782,18 @@
                                     <p class="mt-1 text-xs text-gray-500">Money in drawdown has already had its tax-free quarter, so every pound you take out of it is taxed as income. Leave it blank and we assume none of this pot has been touched, which gives the whole pot a tax-free quarter and says so on your results.</p>
                                     @error('pensions.'.$i.'.crystallisedValue') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
                                 </div>
+                                </div>
+                                </details>
                                 <div class="sm:col-span-2 lg:col-span-3">
                                     <p class="{{ $label }} mb-2">Planned withdrawals</p>
+                                    <p class="mb-2 text-xs text-gray-500">"Take lump sums" gives a quarter of each payment tax-free and taxes the rest. "Take the tax-free quarter in one go" pays up to a quarter of the pot tax-free and moves the rest into drawdown.</p>
                                     @foreach ($pension['withdrawals'] as $wi => $w)
                                         <div wire:key="pension-{{ $i }}-wd-{{ $wi }}" class="mb-2 grid items-end gap-2 sm:grid-cols-4">
                                             <div>
                                                 <label for="pensions-{{ $i }}-wd-{{ $wi }}-kind" class="text-xs text-gray-600">Kind</label>
                                                 <select id="pensions-{{ $i }}-wd-{{ $wi }}-kind" wire:model="pensions.{{ $i }}.withdrawals.{{ $wi }}.kind" class="{{ $field }}">
-                                                    <option value="pcls">Tax-free lump (PCLS)</option>
-                                                    <option value="ufpls">UFPLS</option>
+                                                    <option value="pcls">Take the tax-free quarter in one go</option>
+                                                    <option value="ufpls">Take lump sums (a quarter tax-free each time)</option>
                                                     <option value="drawdown">Drawdown income</option>
                                                 </select>
                                             </div>

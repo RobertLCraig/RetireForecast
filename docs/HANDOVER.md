@@ -5,10 +5,15 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-10-22 (card 0212, Monte Carlo compound rate). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-10-22 (cards 0212 to 0224, the 2026-10-21 full review). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and the older card bullets were folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md).
 `HandoverHygieneTest` fails this file above 40 KB. The rule for which bullets to fold next is
 Rob's call on card 0151:_
+
+- **The results page leads with the answer, in plain words.** Cards 0216 to 0224, all in
+  ai-review and **none seen in a browser**. A run from an older engine now shows an amber "out of
+  date: re-run it" box (card 0219), so every stored result shows it until the re-run below.
+  A Welsh home is refused with a reason (card 0215).
 
 - **Tax thresholds index from 2031-32, not 2032-33.** Card 0214. `ENGINE_VERSION` is
   `finance-engine/thresholds-index-from-2031-32`; the **re-run is owed** for every plan past 2030.
@@ -21,8 +26,7 @@ Rob's call on card 0151:_
 - **The Monte Carlo now grows money at the stated rate.** Card 0212. Before, the typical all-shares
   pot grew 1.7% a year, not 4.4%, so every success chance was too low. `ENGINE_VERSION` is
   `finance-engine/monte-carlo-draws-compound-to-the-stated-rate`; **every stored Monte Carlo result
-  owes a re-run**. Cards 0213 to 0224 are the rest of the 2026-10-21 full review: accuracy first,
-  then readability (those wait on 0212 and 0213).
+  owes a re-run**.
 
 - **A "Let out & rent elsewhere" plan pays the tenancy deposit in year 0.** Card 0165.
   `ENGINE_VERSION` is `finance-engine/let-out-and-rent-pays-a-tenancy-deposit`; the **re-run is
