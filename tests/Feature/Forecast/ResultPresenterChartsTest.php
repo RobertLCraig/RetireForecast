@@ -22,11 +22,9 @@ use RetireForecast\FinanceEngine\TaxYear\RegionProfile;
 use Tests\TestCase;
 
 /**
- * The two over-time charts: the fan defaults to SPENDABLE money (excl. home) and flips to
- * total on the include-home toggle, and the strategy comparison is one median line PER
- * housing strategy over time (not a single terminal bar), so "which keeps the most usable
- * money over a long life" is legible. Hand-built results give full control over the two
- * bases so the toggle is shown to switch the data, not just the labels.
+ * The fan defaults to SPENDABLE money (excl. home) and flips to total on the include-home
+ * toggle. Hand-built results give full control over the two bases so the toggle is shown to
+ * switch the data, not just the labels.
  */
 final class ResultPresenterChartsTest extends TestCase
 {
@@ -53,9 +51,8 @@ final class ResultPresenterChartsTest extends TestCase
         $this->assertSame(0, $excl['fan']['options']['yaxis']['min']);
         // A solvent plan never dips below zero, so the £0 floor stays.
         $this->assertFalse($excl['fan']['dipsNegative']);
-        // Nothing below zero, so no shortfall band is shaded on either over-time chart.
+        // Nothing below zero, so no shortfall band is shaded.
         $this->assertArrayNotHasKey('annotations', $excl['fan']['options']);
-        $this->assertArrayNotHasKey('annotations', $excl['comparison']['options']);
     }
 
     public function test_the_fan_plots_the_net_position_below_zero_and_drops_the_axis_floor_when_the_money_runs_out(): void
@@ -75,45 +72,26 @@ final class ResultPresenterChartsTest extends TestCase
         // proving the chart plots the net-position fan, not the £0-floored usable fan.
         $this->assertSame(Money::fromPounds(-90_000)->format(), $built['fan']['rows'][1]['p10']);
 
-        // The below-zero shortfall region is shaded light red on both the fan and the
-        // strategy-comparison chart, anchored at £0 and dropping into the negative territory.
+        // The below-zero shortfall region is shaded light red, anchored at £0 and dropping into
+        // the negative territory.
         $fanBand = $built['fan']['options']['annotations']['yaxis'];
         $this->assertCount(1, $fanBand);
         $this->assertSame(0, $fanBand[0]['y']);
         $this->assertLessThan(0, $fanBand[0]['y2']);
         $this->assertSame('#ef4444', $fanBand[0]['fillColor']);
-        $this->assertSame('#ef4444', $built['comparison']['options']['annotations']['yaxis'][0]['fillColor']);
     }
 
-    public function test_the_comparison_is_one_median_line_per_strategy_over_time(): void
+    public function test_the_comparison_is_one_summary_row_per_strategy(): void
     {
-        $results = $this->threeStrategies();
+        $excl = ResultPresenter::build($this->threeStrategies(), 'buy_outright', includeHome: false)['comparison'];
 
-        $excl = ResultPresenter::build($results, 'buy_outright', includeHome: false)['comparison'];
-
-        // One overlaid line per housing strategy (not a single terminal bar).
-        $this->assertCount(3, $excl['options']['series']);
-        $this->assertCount(3, $excl['strategies']);
-        $this->assertSame(['stay_put', 'buy_outright', 'rent'], array_column($excl['strategies'], 'key'));
-
-        // The accessible year x strategy table carries every plotted point, and the lines use
-        // the USABLE median: stay-put's first year is its spendable figure, not its total.
-        $this->assertNotEmpty($excl['lineRows']);
-        $this->assertSame(Money::fromPounds(300_000)->format(), $excl['lineRows'][0]['cells']['stay_put']);
-
-        // The per-strategy summary keeps the run-out stats a line can't show (so a high line
-        // never hides a high risk), with the keys the PDF + CSV also read.
+        // The per-strategy summary keeps the run-out stats, with the keys the PDF + CSV read.
         $this->assertCount(3, $excl['rows']);
         foreach ($excl['rows'] as $row) {
             $this->assertArrayHasKey('successEssentials', $row);
             $this->assertArrayHasKey('depletionRate', $row);
             $this->assertArrayHasKey('medianTerminal', $row);
         }
-
-        // Include-home flips the comparison basis too: stay-put's line becomes its total.
-        $incl = ResultPresenter::build($results, 'buy_outright', includeHome: true)['comparison'];
-        $this->assertFalse($incl['usableBasis']);
-        $this->assertSame(Money::fromPounds(500_000)->format(), $incl['lineRows'][0]['cells']['stay_put']);
     }
 
     public function test_person_ages_label_the_axis_and_the_chart_tables(): void
@@ -127,7 +105,6 @@ final class ResultPresenterChartsTest extends TestCase
         $built = ResultPresenter::build($this->threeStrategies(), 'buy_outright', includeHome: false, household: $household);
 
         $this->assertSame('68 / 66', $built['fan']['rows'][0]['ages']);
-        $this->assertSame('68 / 66', $built['comparison']['lineRows'][0]['ages']);
         // The axis label map is attached for charts.js (year keys -> ages label).
         $this->assertSame('68 / 66', $built['fan']['options']['ageByYear'][2026]);
         $this->assertSame('69 / 67', $built['fan']['options']['ageByYear'][2027]);

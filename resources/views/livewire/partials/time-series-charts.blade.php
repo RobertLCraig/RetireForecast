@@ -32,7 +32,7 @@
     {{-- C1 — income staircase --}}
     <div>
         <h3 class="text-base font-semibold text-gray-900">Where your income comes from</h3>
-        <p class="mt-1 text-sm text-gray-600">Each band is one source of income, stacked to the year's total. Watch the handover as earnings stop and pensions, the State Pension and any drawdown take over.</p>
+        <p class="mt-1 text-sm text-gray-600">Each band is one kind of income, stacked to the year's total. Watch the handover as earnings stop and pensions, the State Pension and any drawdown take over. The table below lists every source on its own.</p>
         <div class="mt-4" wire:key="ts-income-{{ $ladderSelected }}-{{ $timeSeries['nominal'] ? 'cash' : 'real' }}">
             <div wire:ignore>
                 <div x-data="chart(@js($timeSeries['income']['options']))" role="img"

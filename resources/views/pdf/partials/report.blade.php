@@ -1218,14 +1218,11 @@
             probability). The dashed verticals mark the life events that drive each step change.</p>
 
         <h3>Where your income comes from</h3>
-        <p class="lede">Each band is one source of income, stacked to the year's total. Watch the handover as
+        <p class="lede">Each band is one kind of income, stacked to the year's total. Watch the handover as
             earnings stop and pensions, the State Pension and any drawdown take over.</p>
         <img class="chart" src="{{ $timeSeriesCharts['income'] }}" alt="Stacked area chart of income by source over time. The full figures are in the table below.">
         @include('pdf.partials.chart-key', ['milestones' => $milestones])
-        @if ($timeSeries['income']['folded'])
-            <p class="note">The chart folds the smallest sources into a single "Other income" band; the table below
-                keeps every source separate.</p>
-        @endif
+        <p class="note">The chart groups the sources into a few bands; the table below keeps every source separate.</p>
         <table>
             <thead>
                 <tr>

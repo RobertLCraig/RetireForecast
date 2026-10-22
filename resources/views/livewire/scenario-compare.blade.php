@@ -239,6 +239,9 @@
                     aria-label="Line chart of usable wealth (excluding the home, after pension tax) by year for each plan. The full figures are in the data table below."></div>
             </div>
         </div>
+        @if ($burndown['notCharted'] > 0)
+            <p data-not-charted class="mt-2 text-sm text-gray-600">The chart shows your base plan and the plans that last longest. {{ $burndown['notCharted'] }} more {{ $burndown['notCharted'] === 1 ? 'plan is' : 'plans are' }} in the table.</p>
+        @endif
 
         <details class="mt-4">
             <summary class="cursor-pointer text-sm font-medium text-blue-700">Show the numbers behind this chart</summary>

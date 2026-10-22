@@ -151,10 +151,10 @@ final class MilestonesTest extends TestCase
         // smear together. The second is dodged to the bottom of the plot, a third nudged deeper —
         // while an event in a year of its own stays at the top with no offset.
         $annotations = ResultPresenter::milestoneAnnotations([
-            ['year' => 2026, 'age' => null, 'label' => 'The home is sold', 'kind' => 'house_sale'],
+            ['year' => 2026, 'age' => 66, 'label' => 'Alex retires', 'kind' => 'retirement'],
             ['year' => 2026, 'age' => 66, 'label' => "Sam's State Pension starts", 'kind' => 'state_pension'],
             ['year' => 2026, 'age' => 66, 'label' => 'Sam retires', 'kind' => 'retirement'],
-            ['year' => 2030, 'age' => 70, 'label' => 'Alex dies', 'kind' => 'death'],
+            ['year' => 2030, 'age' => 70, 'label' => "Alex's State Pension starts", 'kind' => 'state_pension'],
         ]);
 
         // 2026: top (0) → bottom (0) → top nudged deeper (+14); the lone 2030 event is not dodged.
@@ -163,8 +163,23 @@ final class MilestonesTest extends TestCase
         $this->assertSame(['top', 14], [$annotations[2]['label']['position'], $annotations[2]['label']['offsetY']]);
         $this->assertSame(['top', 0], [$annotations[3]['label']['position'], $annotations[3]['label']['offsetY']]);
 
-        // The vertical line still lands on the event's year, colour-coded by kind (house_sale amber).
+        // The vertical line still lands on the event's year, colour-coded by kind (retirement blue).
         $this->assertSame(2026, $annotations[0]['x']);
-        $this->assertSame('#d97706', $annotations[0]['borderColor']);
+        $this->assertSame('#0284c7', $annotations[0]['borderColor']);
+    }
+
+    public function test_a_chart_draws_only_retirement_and_state_pension_lines(): void
+    {
+        // Card 0220: the other events go to the events table, not onto every chart.
+        $annotations = ResultPresenter::milestoneAnnotations([
+            ['year' => 2026, 'age' => null, 'label' => 'The home is sold', 'kind' => 'house_sale'],
+            ['year' => 2027, 'age' => 66, 'label' => 'Sam retires', 'kind' => 'retirement'],
+            ['year' => 2028, 'age' => 67, 'label' => 'Sam starts taking their pension', 'kind' => 'pension_access'],
+            ['year' => 2029, 'age' => 68, 'label' => "Sam's State Pension starts", 'kind' => 'state_pension'],
+            ['year' => 2040, 'age' => 79, 'label' => 'Sam dies', 'kind' => 'death'],
+        ]);
+
+        $this->assertSame(['Sam retires', "Sam's State Pension starts"], array_column(array_column($annotations, 'label'), 'text'));
+        $this->assertSame('12px', $annotations[0]['label']['style']['fontSize']);
     }
 }

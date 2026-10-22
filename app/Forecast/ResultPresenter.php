@@ -181,7 +181,7 @@ final class ResultPresenter
             // than silently showing total wealth as if it were spendable money (no silent failure).
             'usableFanAvailable' => $primarySim->usableFanChart !== [],
             'fan' => self::fan($primary, $primarySim, $includeHome, $ageByYear),
-            'comparison' => self::comparison($resultsByVariant, $includeHome, $ageByYear),
+            'comparison' => self::comparison($resultsByVariant),
             // How long the household may last, from the joint-life sampler (same across variants —
             // mortality does not depend on the housing choice). Null for a run predating the field.
             'longevity' => self::longevityPanel($primarySim->longevity),
@@ -680,53 +680,27 @@ final class ResultPresenter
         return [$r->fanChart, false];
     }
 
-    /** A distinct line colour per housing strategy, so each reads the same across the app. */
-    private const VARIANT_COLOURS = [
-        'stay_put' => '#6b7280',      // slate
-        'buy_outright' => '#2563eb',  // blue
-        'rent' => '#d97706',          // amber
-    ];
+    /** The most plans the Compare chart draws (card 0220), and a fixed colour for each line. */
+    private const MAX_COMPARE_LINES = 5;
+
+    private const COMPARE_COLOURS = ['#1f2937', '#2563eb', '#d97706', '#16a34a', '#9333ea'];
 
     /**
-     * How the three housing strategies compare OVER TIME: each variant's MEDIAN spendable
-     * money (excl. home, or total when includeHome) by calendar year, overlaid as one line
-     * each, so you can read which strategy keeps the most usable money as the household ages
-     * and where each trajectory trends toward zero. The earlier terminal-wealth bar chart
-     * hid exactly this: it dropped the time dimension and, counting the home, made the
-     * options look near-identical even when the spendable paths diverge sharply.
-     *
-     * A high median line is not the whole story (a future can run short along the way and
-     * recover), so the per-strategy run-out stats stay in `rows` beside the chart — a high
-     * line never hides a high risk. Late years thin out as fewer simulated futures still
-     * have both partners alive; `paths` is carried per point for that caveat.
+     * One summary row per housing strategy run: its odds and its median end figures, read by the
+     * PDF and the CSV. Its over-time line chart was never drawn and was deleted (card 0220).
      *
      * @param  Collection<string, Result>  $resultsByVariant
-     * @return array{options: array<string, mixed>, rows: list<array<string, mixed>>, years: list<int>, lineRows: list<array{year: int, cells: array<string, ?string>}>, strategies: list<array{key: string, label: string}>, usableBasis: bool, basisLabel: string, dipsNegative: bool}
+     * @return array{rows: list<array<string, mixed>>}
      */
-    private static function comparison(Collection $resultsByVariant, bool $includeHome, array $ageByYear = []): array
+    private static function comparison(Collection $resultsByVariant): array
     {
         $rows = [];
-        $yearsSet = [];
-        $byVariant = []; // key => [calendarYear => ['pounds' => int, 'text' => string]]
-        $usableBasis = true;
-
         foreach (self::ORDER as $key) {
             $result = $resultsByVariant->get($key);
             if (! $result instanceof Result) {
                 continue;
             }
             $r = $result->simulationResult();
-            [$fan, $isUsable] = self::fanSeries($r, $includeHome);
-            $usableBasis = $usableBasis && $isUsable;
-
-            $median = [];
-            foreach ($fan as $band) {
-                $year = $band['calendarYear'];
-                $yearsSet[$year] = true;
-                $median[$year] = ['pounds' => self::pounds($band['p50']), 'text' => $band['p50']->format()];
-            }
-            $byVariant[$key] = $median;
-
             $rows[] = [
                 'label' => self::LABELS[$key],
                 'successEssentials' => self::formatPercent($r->successProbabilityEssentials),
@@ -739,82 +713,7 @@ final class ResultPresenter
             ];
         }
 
-        $years = array_keys($yearsSet);
-        sort($years);
-
-        // One overlaid line per strategy (chart) + the matching year x strategy table
-        // (the accessible source of truth — every point the chart plots is also text here).
-        $series = [];
-        $colours = [];
-        $strategies = [];
-        $lineRows = [];
-        foreach (array_keys($byVariant) as $key) {
-            $strategies[] = ['key' => $key, 'label' => self::LABELS[$key]];
-            $colours[] = self::VARIANT_COLOURS[$key];
-            $series[] = [
-                'name' => self::LABELS[$key],
-                'data' => array_map(
-                    fn (int $year): array => ['x' => $year, 'y' => $byVariant[$key][$year]['pounds'] ?? null],
-                    $years,
-                ),
-            ];
-        }
-        foreach ($years as $year) {
-            $cells = [];
-            foreach (array_keys($byVariant) as $key) {
-                $cells[$key] = $byVariant[$key][$year]['text'] ?? null;
-            }
-            $lineRows[] = ['year' => $year, 'ages' => $ageByYear[$year] ?? null, 'cells' => $cells];
-        }
-
-        $basisLabel = $usableBasis ? 'Median spendable money, excl. home, after pension tax' : 'Median total wealth, incl. home equity';
-
-        // A strategy whose median future runs out shows a net-position median below £0; let the
-        // axis extend negative so that depth is visible rather than clipped to a flat zero.
-        $dipsNegative = false;
-        foreach ($byVariant as $median) {
-            foreach ($median as $point) {
-                if ($point['pounds'] < 0) {
-                    $dipsNegative = true;
-                    break 2;
-                }
-            }
-        }
-        $yaxis = ['forceNiceScale' => true, 'title' => ['text' => $basisLabel.' (real £)']];
-        if (! $dipsNegative) {
-            $yaxis['min'] = 0;
-        }
-
-        $options = [
-            'chart' => ['type' => 'line', 'height' => 360, 'toolbar' => ['show' => false]],
-            'colors' => $colours,
-            'series' => $series,
-            'stroke' => ['curve' => 'straight', 'width' => 3],
-            'dataLabels' => ['enabled' => false],
-            'markers' => ['size' => 0],
-            'moneyAxis' => true,
-            'ageByYear' => $ageByYear === [] ? null : $ageByYear,
-            'xaxis' => ['type' => 'numeric', 'tickAmount' => 8, 'decimalsInFloat' => 0, 'title' => ['text' => 'Calendar year']],
-            'yaxis' => $yaxis,
-            'legend' => ['position' => 'top'],
-        ];
-
-        // Shade everything below £0 light red when a strategy's median runs into shortfall, so
-        // that territory reads at a glance (this chart carries no other annotations).
-        if ($dipsNegative) {
-            $options['annotations'] = ['yaxis' => self::belowZeroBand()];
-        }
-
-        return [
-            'options' => $options,
-            'rows' => $rows,
-            'years' => $years,
-            'lineRows' => $lineRows,
-            'strategies' => $strategies,
-            'usableBasis' => $usableBasis,
-            'basisLabel' => $basisLabel,
-            'dipsNegative' => $dipsNegative,
-        ];
+        return ['rows' => $rows];
     }
 
     /**
@@ -899,8 +798,38 @@ final class ResultPresenter
             $rows[] = ['name' => $plan['name'], 'cells' => $cells];
         }
 
+        // Card 0220: the chart draws the first plan (the base) and the four that last longest, so
+        // it never carries more than five lines; the table keeps every plan.
+        // Lasts longest first: never runs out beats a late run-out; then more left at the end.
+        $lasting = function (int $i) use ($plans): array {
+            $forecast = $plans[$i]['forecast'];
+            $end = $forecast->years === [] ? 0 : $forecast->years[array_key_last($forecast->years)]->usableWealth()->pence;
+
+            return [$forecast->depletionCalendarYear ?? PHP_INT_MAX, $end];
+        };
+        $others = array_slice(array_keys($plans), 1);
+        usort($others, fn (int $a, int $b): int => $lasting($b) <=> $lasting($a));
+        $charted = $plans === [] ? [] : [0, ...array_slice($others, 0, self::MAX_COMPARE_LINES - 1)];
+        sort($charted);
+        $series = array_map(fn (int $i): array => $series[$i], $charted);
+
+        // Name each line at its last point, so a line is never told apart by colour alone.
+        $endLabels = [];
+        foreach ($series as $i => $line) {
+            $last = array_values(array_filter($line['data'], fn (array $p): bool => $p['y'] !== null));
+            if ($last !== []) {
+                $point = $last[array_key_last($last)];
+                $endLabels[] = [
+                    'x' => $point['x'], 'y' => $point['y'],
+                    'marker' => ['size' => 0],
+                    'label' => ['text' => $line['name'], 'borderColor' => self::COMPARE_COLOURS[$i], 'style' => ['fontSize' => '12px', 'color' => '#ffffff', 'background' => self::COMPARE_COLOURS[$i]]],
+                ];
+            }
+        }
+
         $options = [
             'chart' => ['type' => 'line', 'height' => 360, 'toolbar' => ['show' => false]],
+            'colors' => array_slice(self::COMPARE_COLOURS, 0, count($series)),
             'series' => $series,
             'stroke' => ['curve' => 'straight', 'width' => 2],
             'dataLabels' => ['enabled' => false],
@@ -924,11 +853,14 @@ final class ResultPresenter
         if ($dipsNegative) {
             $chartAnnotations['yaxis'] = self::belowZeroBand();
         }
+        if (count($series) > 1) {
+            $chartAnnotations['points'] = $endLabels;
+        }
         if ($chartAnnotations !== []) {
             $options['annotations'] = $chartAnnotations;
         }
 
-        return ['options' => $options, 'years' => $years, 'rows' => $rows, 'dipsNegative' => $dipsNegative];
+        return ['options' => $options, 'years' => $years, 'rows' => $rows, 'dipsNegative' => $dipsNegative, 'notCharted' => count($plans) - count($series)];
     }
 
     /**
@@ -1923,8 +1855,6 @@ final class ResultPresenter
      */
     private const SERIES_COLOURS = ['#2a78d6', '#008300', '#e87ba4', '#eda100', '#1baf7a', '#eb6834', '#4a3aa7', '#e34948'];
 
-    private const OTHER_COLOUR = '#898781';
-
     /**
      * The three hero time-series charts (C1 income staircase, C2 wealth composition,
      * C3 costs over time), each a stacked-area ApexCharts blob over the deterministic
@@ -1942,10 +1872,8 @@ final class ResultPresenter
      * returned `nominalAvailable` is then false and the real figures come back, so a caller can
      * hide the toggle rather than label real money as nominal. Either way a stacked band is
      * always ≥ £0 (incomes, wealth legs and spend are each non-negative), so the axis anchors at
-     * zero with no shortfall band. The C1 stack is capped at the palette's eight hues: if more
-     * than eight income sources occur across the horizon, the smallest-contributing fold into a
-     * neutral "Other" band on the CHART — the income table + CSV still list every source, so
-     * nothing is silently dropped (completeness).
+     * zero with no shortfall band. The C1 chart groups the sources into five bands ({@see incomeBands});
+     * the income table + CSV still list every source, so nothing is silently dropped (completeness).
      *
      * @return array{income: array<string, mixed>, wealth: array<string, mixed>, costs: array<string, mixed>, nominal: bool, nominalAvailable: bool, basisLabel: string, basisShort: string}
      */
@@ -1986,7 +1914,7 @@ final class ResultPresenter
      * time, so the salary → DB → State-Pension → drawdown handover reads at a glance.
      *
      * @param  list<YearResult>  $years
-     * @return array{options: array<string, mixed>, sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>, folded: list<string>}
+     * @return array{options: array<string, mixed>, sources: list<string>, sourceLabels: array<string, string>, rows: list<array<string, mixed>>}
      */
     private static function incomeStaircase(array $years, array $ageByYear, string $basis): array
     {
@@ -1996,51 +1924,26 @@ final class ResultPresenter
             fn (string $source): bool => self::sourceOccurs($years, $source),
         ));
 
-        // Cap the CHART at the eight palette hues: keep the eight largest by horizon-total
-        // (canonical order preserved), fold any remainder into a single "Other" band. The
-        // table below still carries every source, so completeness is never lost.
-        $charted = $active;
-        $folded = [];
-        if (count($active) > count(self::SERIES_COLOURS)) {
-            $totals = [];
-            foreach ($active as $source) {
-                $sum = Money::zero();
-                foreach ($years as $year) {
-                    $sum = $sum->plus($year->incomeBySource[$source] ?? Money::zero());
-                }
-                $totals[$source] = $sum->pence;
-            }
-            arsort($totals);
-            $keep = array_slice(array_keys($totals), 0, count(self::SERIES_COLOURS));
-            $charted = array_values(array_filter($active, fn (string $s): bool => in_array($s, $keep, true)));
-            $folded = array_values(array_filter($active, fn (string $s): bool => ! in_array($s, $keep, true)));
-        }
-
+        // The CHART groups the sources into at most five bands (card 0220: a layperson's chart
+        // carries six items or fewer). The table below still carries every source.
         $series = [];
         $colours = [];
-        foreach ($charted as $i => $source) {
+        foreach (self::incomeBands() as $i => [$name, $sources]) {
+            if (array_intersect($sources, $active) === []) {
+                continue;
+            }
             $series[] = [
-                'name' => self::SOURCE_LABELS[$source],
-                'data' => array_map(
-                    fn (YearResult $y): array => ['x' => $y->calendarYear, 'y' => self::pounds($y->incomeBySource[$source] ?? Money::zero())],
-                    $years,
-                ),
-            ];
-            $colours[] = self::SERIES_COLOURS[$i];
-        }
-        if ($folded !== []) {
-            $series[] = [
-                'name' => 'Other income',
-                'data' => array_map(function (YearResult $y) use ($folded): array {
+                'name' => $name,
+                'data' => array_map(function (YearResult $y) use ($sources): array {
                     $sum = Money::zero();
-                    foreach ($folded as $source) {
+                    foreach ($sources as $source) {
                         $sum = $sum->plus($y->incomeBySource[$source] ?? Money::zero());
                     }
 
                     return ['x' => $y->calendarYear, 'y' => self::pounds($sum)];
                 }, $years),
             ];
-            $colours[] = self::OTHER_COLOUR;
+            $colours[] = self::SERIES_COLOURS[$i];
         }
 
         // The complete per-source table (every active source, canonical order) — the
@@ -2064,7 +1967,23 @@ final class ResultPresenter
             'sources' => $active,
             'sourceLabels' => self::SOURCE_LABELS,
             'rows' => $rows,
-            'folded' => $folded,
+        ];
+    }
+
+    /**
+     * The five bands the income chart draws, each with the sources it sums. Every source in
+     * {@see YearResult::INCOME_SOURCES} sits in exactly one band, so the bands add up to the total.
+     *
+     * @return list<array{0: string, 1: list<string>}>
+     */
+    public static function incomeBands(): array
+    {
+        return [
+            ['Earnings', ['salary']],
+            ['Guaranteed income', self::SECURE_SOURCES],
+            ['Pension pots drawn', ['pension_lump_sum', 'pension_drawdown', 'inherited_pension']],
+            ['Savings drawn', ['asset_drawdown', 'investment_income']],
+            ['Benefits and other', ['means_tested_benefit', 'capital_receipt', 'death_in_service']],
         ];
     }
 
@@ -2256,6 +2175,18 @@ final class ResultPresenter
     }
 
     /**
+     * The life events a chart draws as lines: retirement and State Pension start only (card 0220),
+     * so a couple's chart carries four lines at most. The events table lists every event.
+     *
+     * @param  list<array{year: int, age: int|null, label: string, kind: string}>  $milestones
+     * @return list<array{year: int, age: int|null, label: string, kind: string}>
+     */
+    public static function chartedMilestones(array $milestones): array
+    {
+        return array_values(array_filter($milestones, fn (array $m): bool => in_array($m['kind'], ['retirement', 'state_pension'], true)));
+    }
+
+    /**
      * Milestone events ({@see milestones}) as ApexCharts x-axis annotations — a dated vertical
      * line per "big event" (retirement, State Pension start, first pension drawdown, death, the
      * home sale), so a chart shows *when* each step change happens, not just the curve. Colour-
@@ -2281,7 +2212,7 @@ final class ResultPresenter
         // Alternate top/bottom of the plot, then push any further same-year label deeper in.
         $seenInYear = [];
         $annotations = [];
-        foreach ($milestones as $m) {
+        foreach (self::chartedMilestones($milestones) as $m) {
             $n = $seenInYear[$m['year']] ?? 0;
             $seenInYear[$m['year']] = $n + 1;
 
@@ -2299,7 +2230,7 @@ final class ResultPresenter
                     'position' => $position,
                     'offsetY' => $offsetY,
                     'borderColor' => $c,
-                    'style' => ['fontSize' => '9px', 'color' => '#ffffff', 'background' => $c],
+                    'style' => ['fontSize' => '12px', 'color' => '#ffffff', 'background' => $c],
                 ],
             ];
         }

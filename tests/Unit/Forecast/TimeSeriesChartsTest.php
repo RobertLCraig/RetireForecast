@@ -180,7 +180,7 @@ final class TimeSeriesChartsTest extends TestCase
         }
     }
 
-    public function test_income_chart_caps_at_the_palette_and_folds_the_rest_without_dropping_any_source(): void
+    public function test_the_grouped_income_bands_reconcile_to_the_total(): void
     {
         // A household that lights up more than eight income sources across the horizon: salary,
         // DB, State Pension, a taxable annuity/rental stream (other_taxable), GIA investment
@@ -203,28 +203,26 @@ final class TimeSeriesChartsTest extends TestCase
         $forecast = $this->forecast($state);
         $income = ResultPresenter::timeSeriesCharts($forecast)['income'];
 
-        // More than eight sources occur, so the chart folds the smallest into "Other" — but the
-        // table still lists every one of them (completeness: no silent drop).
+        // More than eight sources occur, and the table still lists every one of them
+        // (completeness: no silent drop), while the chart groups them into five bands.
         $this->assertGreaterThan(8, count($income['sources']));
-        $this->assertNotEmpty($income['folded']);
+        $this->assertCount(5, $income['options']['series']);
+        $this->assertCount(5, $income['options']['colors']);
 
-        // The chart carries the eight palette hues plus exactly one "Other" band.
-        $this->assertCount(9, $income['options']['series']);
-        $this->assertCount(9, $income['options']['colors']);
-        $this->assertSame('Other income', $income['options']['series'][8]['name']);
+        // Every source sits in exactly one band, so no source is dropped or counted twice.
+        $banded = array_merge(...array_column(ResultPresenter::incomeBands(), 1));
+        $this->assertEqualsCanonicalizing(YearResult::INCOME_SOURCES, $banded);
 
-        // Every folded source is still a column in the accessible table.
-        foreach ($income['folded'] as $source) {
-            $this->assertContains($source, $income['sources']);
-        }
-
-        // And the table still reconciles source-columns to the total each year.
-        foreach ($income['rows'] as $row) {
+        // The bands stack to the same total as the table, every year (card 0220).
+        foreach ($income['rows'] as $i => $row) {
             $sum = 0;
             foreach ($income['sources'] as $source) {
                 $sum += MoneyText::toPence($row['income'][$source]);
             }
             $this->assertSame(MoneyText::toPence($row['total']), $sum, "income must reconcile in {$row['year']}");
+
+            $bands = array_sum(array_map(fn (array $series): int => $series['data'][$i]['y'], $income['options']['series']));
+            $this->assertEqualsWithDelta(intdiv($sum, 100), $bands, 5, "the bands must stack to the total in {$row['year']}");
         }
     }
 
@@ -344,5 +342,48 @@ final class TimeSeriesChartsTest extends TestCase
         $this->assertFalse($charts['nominal']);
         $this->assertSame('real pounds', $charts['basisShort']);
         $this->assertSame(Money::fromPounds(25_000)->format(), $charts['costs']['rows'][0]['total']);
+    }
+
+    /**
+     * Card 0220: a layperson's chart carries six items or fewer. The PDF draws the same option
+     * blobs (ChartSvg), so this covers the printed charts too.
+     */
+    public function test_no_chart_carries_more_than_six_series(): void
+    {
+        $forecast = $this->forecast($this->richState());
+        $charts = ResultPresenter::timeSeriesCharts($forecast);
+        $plans = array_map(fn (int $i): array => ['name' => "Plan {$i}", 'forecast' => $forecast], range(1, 9));
+
+        foreach ([
+            'income' => $charts['income']['options'],
+            'wealth' => $charts['wealth']['options'],
+            'costs' => $charts['costs']['options'],
+            'compare' => ResultPresenter::burndown($plans)['options'],
+        ] as $name => $options) {
+            $this->assertLessThanOrEqual(6, count($options['series']), "the {$name} chart is crowded");
+        }
+    }
+
+    public function test_the_compare_chart_draws_at_most_five_plans(): void
+    {
+        // A base plus seven what-ifs, each spending a little more, so the cheaper ones last longer.
+        $plans = [];
+        foreach (range(0, 7) as $i) {
+            $state = $this->richState();
+            $state['expenseLines'][0]['amount'] = (string) (26_000 + $i * 6_000);
+            $plans[] = ['name' => $i === 0 ? 'Base' : "What-if {$i}", 'forecast' => $this->forecast($state)];
+        }
+
+        $burndown = ResultPresenter::burndown($plans);
+
+        $names = array_column($burndown['options']['series'], 'name');
+        // The base, then the four that last longest (the cheapest).
+        $this->assertSame(['Base', 'What-if 1', 'What-if 2', 'What-if 3', 'What-if 4'], $names);
+        $this->assertSame(3, $burndown['notCharted']);
+        // The table keeps every plan.
+        $this->assertCount(8, $burndown['rows']);
+        // Each line is named at its end, not told apart by colour alone.
+        $this->assertSame($names, array_column(array_column($burndown['options']['annotations']['points'], 'label'), 'text'));
+        $this->assertCount(5, array_unique($burndown['options']['colors']));
     }
 }
