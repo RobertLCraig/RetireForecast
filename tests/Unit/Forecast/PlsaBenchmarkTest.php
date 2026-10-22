@@ -154,4 +154,22 @@ final class PlsaBenchmarkTest extends TestCase
         $this->assertSame(Money::fromPounds(23_000)->format(), $bundled['comparableSpend'] ?? null);
         $this->assertSame($bundled['comparableSpend'], $split['comparableSpend'] ?? null, 'moving the bill out of the running costs does not move the benchmark');
     }
+
+    public function test_the_plsa_benchmark_keeps_the_utilities_inside_a_service_charge(): void
+    {
+        // Card 0169. A £4,000 service charge buying £1,500 of water and energy: the PLSA basket
+        // includes utilities, so only the £2,500 of ownership cost leaves the comparable spend.
+        // £20,000 groceries + £1,500 utilities = £21,500, not £20,000.
+        $plsa = ResultPresenter::plsaBenchmark($this->household([
+            'householdName' => 'Leaseholder', 'region' => 'england_wales_ni',
+            'people' => [['id' => 'p1', 'dob' => '1958-01-01', 'sex' => 'female', 'employmentStatus' => 'retired']],
+            'expenseLines' => [
+                ['id' => 'e1', 'label' => 'Groceries', 'amount' => '20000', 'category' => 'essential'],
+                ['id' => 'e2', 'label' => 'Service charge', 'amount' => '4000', 'category' => 'essential', 'utilities' => '1500'],
+            ],
+            'expense' => ['survivorFactor' => '70'],
+        ]));
+
+        $this->assertSame(Money::fromPounds(21_500)->format(), $plsa['comparableSpend'] ?? null);
+    }
 }

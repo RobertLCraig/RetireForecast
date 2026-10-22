@@ -3502,8 +3502,10 @@ final class ResultPresenter
         // AND the ownership costs (service charge / ground rent) — the two housing-linked
         // contingent subsets; everyday home running costs are included. Excluding them here keeps
         // the benchmark on the same basis the contingent-cost rule treats them (one definition).
+        // The utilities a service charge buys stay in: PLSA's basket includes water and energy
+        // (card 0169), and the bucket less those utilities is escalatingPropertyCosts().
         $spend = $household->expenseProfile->targetAnnualSpend()
-            ->minus($household->expenseProfile->propertyCosts())
+            ->minus($household->expenseProfile->escalatingPropertyCosts())
             ->minus($household->expenseProfile->mortgageCosts())
             ->minus($household->expenseProfile->mortgageLinkedEssential())
             ->minus($household->expenseProfile->mortgageLinkedDiscretionary())
