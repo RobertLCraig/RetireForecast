@@ -326,7 +326,7 @@ class ScenarioBuilder extends Component
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'householdName' => ['required', 'string', 'max:255'],
-            'region' => ['required', Rule::in(['england_wales_ni', 'scotland']), $this->regionSupported(...)],
+            'region' => ['required', Rule::in(['england_wales_ni', 'wales', 'scotland']), $this->regionSupported(...)],
             'baseTaxYear' => ['required', Rule::in(['2025-26', '2026-27'])],
             'variant' => ['required', Rule::in(['buy_outright', 'rent', 'stay_put'])],
             // No default and no silent fallback: a couple must SAY which they are (card 0054).
@@ -713,6 +713,15 @@ class ScenarioBuilder extends Component
     /** Region is allowed only if the engine can actually build its tax config (Scotland cannot yet). */
     public function regionSupported(string $attribute, mixed $value, callable $fail): void
     {
+        // Wales shares England's income tax but not its purchase tax (Land Transaction Tax) or its
+        // care means test (one £50,000 limit). Neither is modelled, so a Welsh home is refused
+        // rather than charged England's rules (board card 0215). The stored value
+        // 'england_wales_ni' is kept for every existing scenario; only its label changed.
+        if ($value === 'wales') {
+            $fail('Welsh homes are not available yet: Wales has its own purchase tax and care-fee rules, which this tool does not model.');
+
+            return;
+        }
         if ($value !== 'scotland') {
             return;
         }
@@ -720,7 +729,7 @@ class ScenarioBuilder extends Component
         try {
             TaxYearRegistry::for($this->baseTaxYear, RegionProfile::Scotland);
         } catch (\Throwable) {
-            $fail('Scottish tax bands are not available yet. Choose England, Wales & Northern Ireland.');
+            $fail('Scottish tax bands are not available yet. Choose England or Northern Ireland.');
         }
     }
 

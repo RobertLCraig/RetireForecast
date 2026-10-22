@@ -217,7 +217,8 @@
                     <div>
                         <label for="region" class="{{ $label }}">Tax region</label>
                         <select id="region" wire:model="region" class="{{ $field }}" @error('region') aria-invalid="true" aria-describedby="region-error" @enderror>
-                            <option value="england_wales_ni">England, Wales &amp; Northern Ireland</option>
+                            <option value="england_wales_ni">England or Northern Ireland</option>
+                            <option value="wales">Wales</option>
                             <option value="scotland">Scotland</option>
                         </select>
                         @error('region') <p id="region-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror

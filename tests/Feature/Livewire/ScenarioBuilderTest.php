@@ -1005,6 +1005,19 @@ class ScenarioBuilderTest extends TestCase
         $this->assertSame(0, Scenario::count());
     }
 
+    public function test_a_welsh_home_is_not_charged_english_rules(): void
+    {
+        // Wales charges Land Transaction Tax, not Stamp Duty, and runs its own care means test
+        // (board card 0215). Neither is modelled, so a Welsh home is refused with a reason rather
+        // than charged England's rules without a word.
+        $state = BuilderStateFixture::minimalValid();
+        $state['region'] = 'wales';
+
+        $this->fill($state)->call('save')->assertHasErrors('region');
+
+        $this->assertSame(0, Scenario::count());
+    }
+
     public function test_the_builder_screen_renders_for_a_signed_in_user(): void
     {
         $this->get(route('scenarios.create'))->assertOk()->assertSee('New forecast');
