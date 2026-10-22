@@ -364,6 +364,29 @@ final class TimeSeriesChartsTest extends TestCase
         }
     }
 
+    public function test_monthly_net_income_reconciles_to_the_year(): void
+    {
+        $state = $this->richState();
+        $forecast = $this->forecast($state);
+        $stages = ResultPresenter::monthlyNetIncome((new HouseholdAssembler)->household($state), $forecast);
+
+        // A working couple: now, once both have retired, after the first death (card 0222).
+        $this->assertSame(['Now', 'Once you have both retired', 'After the first death'], array_column($stages, 'stage'));
+
+        $years = [];
+        foreach ($forecast->years as $y) {
+            $years[$y->calendarYear] = $y;
+        }
+        foreach ($stages as $stage) {
+            $parts = array_sum(array_map(fn (array $p): int => $p['monthly']->pence, $stage['parts']));
+            $this->assertSame($stage['total']->pence, $parts, "{$stage['stage']}: the parts must add up to the total");
+
+            $y = $years[$stage['year']];
+            $income = array_sum(array_map(fn (Money $m): int => $m->pence, $y->incomeBySource));
+            $this->assertSame(Money::fromPence($income - $y->totalTax->pence)->dividedBy(12)->pence, $stage['total']->pence, "{$stage['stage']}: the total must be the year's income less tax, over 12");
+        }
+    }
+
     public function test_the_compare_chart_draws_at_most_five_plans(): void
     {
         // A base plus seven what-ifs, each spending a little more, so the cheaper ones last longer.

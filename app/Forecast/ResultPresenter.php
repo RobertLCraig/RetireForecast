@@ -2023,6 +2023,66 @@ final class ResultPresenter
     }
 
     /**
+     * What the household lives on each month, after tax, at the three stages that matter (card
+     * 0222): now; once everyone has retired and the State Pension is paid; after the first death.
+     * Read off the forecast year itself: its income by source, grouped into the {@see incomeBands},
+     * less the year's total tax, over 12. The tax line takes the pennies the rounding leaves, so the
+     * parts always add up to the total and the total is exactly the year's (income - tax) / 12.
+     *
+     * @return list<array{stage: string, year: int, ages: string, total: Money, parts: list<array{label: string, monthly: Money}>}>
+     */
+    public static function monthlyNetIncome(Household $household, ForecastResult $forecast): array
+    {
+        if ($forecast->years === []) {
+            return [];
+        }
+        $everyoneAlive = fn (YearResult $y): bool => $y->aliveCount === count($y->ages);
+
+        $stages = [['Now', $forecast->years[0]]];
+
+        // Retired: the first year, with everyone alive, on or after the last retirement and the
+        // last State Pension start.
+        $events = array_filter(self::milestones($household, $forecast), fn (array $m): bool => in_array($m['kind'], ['retirement', 'state_pension'], true));
+        $settled = $events === [] ? null : max(array_column($events, 'year'));
+        foreach ($forecast->years as $y) {
+            if ($settled !== null && $y->calendarYear > $forecast->years[0]->calendarYear && $y->calendarYear >= $settled && $everyoneAlive($y)) {
+                $stages[] = [count($household->persons) > 1 ? 'Once you have both retired' : 'Once you have retired', $y];
+                break;
+            }
+        }
+
+        if (count($household->persons) > 1) {
+            foreach ($forecast->years as $y) {
+                if (! $everyoneAlive($y) && $y->aliveCount > 0) {
+                    $stages[] = ['After the first death', $y];
+                    break;
+                }
+            }
+        }
+
+        return array_map(function (array $stage): array {
+            [$label, $y] = $stage;
+            $parts = [];
+            $income = Money::zero();
+            foreach (self::incomeBands() as [$name, $sources]) {
+                $annual = Money::zero();
+                foreach ($sources as $source) {
+                    $annual = $annual->plus($y->incomeBySource[$source] ?? Money::zero());
+                }
+                $income = $income->plus($annual);
+                if ($annual->isPositive()) {
+                    $parts[] = ['label' => $name, 'monthly' => $annual->dividedBy(12)];
+                }
+            }
+            $total = $income->minus($y->totalTax)->dividedBy(12);
+            $bands = array_reduce($parts, fn (Money $sum, array $p): Money => $sum->plus($p['monthly']), Money::zero());
+            $parts[] = ['label' => 'Less tax', 'monthly' => $total->minus($bands)];
+
+            return ['stage' => $label, 'year' => $y->calendarYear, 'ages' => implode(' / ', $y->ages), 'total' => $total, 'parts' => $parts];
+        }, $stages);
+    }
+
+    /**
      * The five bands the income chart draws, each with the sources it sums. Every source in
      * {@see YearResult::INCOME_SOURCES} sits in exactly one band, so the bands add up to the total.
      *

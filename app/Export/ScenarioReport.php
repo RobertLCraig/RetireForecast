@@ -211,6 +211,7 @@ class ScenarioReport
                 'sustainable' => app(SustainableSpend::class)->forScenario($scenario),
                 'spendable' => ResultPresenter::spendableSummary($primaryForecast),
             ],
+            'monthlyIncome' => $presented === null ? [] : ResultPresenter::monthlyNetIncome($household, $primaryForecast),
             'shock' => $shock,
             'sensitivity' => app(AssumptionComparison::class)->compare($scenario),
             'budget' => ResultPresenter::expenseBreakdown($scenario->effectiveBuilderState(), $household),

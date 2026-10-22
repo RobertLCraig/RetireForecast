@@ -487,6 +487,8 @@ class ScenarioResults extends Component
                 'sustainable' => app(SustainableSpend::class)->forScenario($this->scenario),
                 'spendable' => ResultPresenter::spendableSummary($ladderContext->forecasts[$this->scenario->variant->value] ?? $forecast),
             ],
+            // What we live on each month after tax, at three stages (card 0222).
+            'monthlyIncome' => $presented === null ? [] : ResultPresenter::monthlyNetIncome($household, $ladderContext->forecasts[$this->scenario->variant->value] ?? $forecast),
             // Headline output #1: deterministic, independent of any Monte Carlo run.
             'shock' => $shock,
             // Compare-assumptions overlay: also deterministic, so it shows immediately.

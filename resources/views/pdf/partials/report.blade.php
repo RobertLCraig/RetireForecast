@@ -119,6 +119,23 @@
             @endif
             <p class="tile-note">Worked out on the expected path, not the unlucky futures.</p>
         @endif
+        @if ($monthlyIncome)
+            <h3>What you live on each month, after tax</h3>
+            <table>
+                <thead><tr><th>Stage</th><th>Year (ages)</th><th>Each month</th><th>Made up of</th></tr></thead>
+                <tbody>
+                    @foreach ($monthlyIncome as $stage)
+                        <tr>
+                            <td>{{ $stage['stage'] }}</td>
+                            <td>{{ $stage['year'] }} ({{ $stage['ages'] }})</td>
+                            <td>{{ $stage['total']->format() }}</td>
+                            <td>@foreach ($stage['parts'] as $part){{ $part['label'] }} {{ $part['monthly']->format() }}@if (! $loop->last); @endif @endforeach</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <p class="tile-note">Household income after all tax, in today's money, on the expected path.</p>
+        @endif
 
         <h3>{{ $primary['label'] }}</h3>
         <table class="tiles">

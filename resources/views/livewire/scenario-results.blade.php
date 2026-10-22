@@ -174,6 +174,26 @@
                     <p class="mt-1 text-xs text-gray-600">Worked out on the expected path, not the unlucky futures: read it beside the "out of 10" figure above. <a href="{{ route('scenarios.afford', $scenario->baseScenario()) }}" class="text-blue-700 underline">More on what you can afford</a>.</p>
                 </div>
             @endif
+            {{-- What we live on each month after tax, at three stages (board card 0222). --}}
+            @if ($monthlyIncome)
+                <div data-monthly-income class="mt-4 grid gap-3 sm:grid-cols-3">
+                    @foreach ($monthlyIncome as $stage)
+                        <div class="rounded-md bg-white/70 px-4 py-3 text-gray-900">
+                            <p class="text-sm font-medium">{{ $stage['stage'] }} <span class="font-normal text-gray-600">({{ $stage['year'] }}, aged {{ $stage['ages'] }})</span></p>
+                            <p class="mt-1 text-lg"><strong class="tabular-nums">{{ $stage['total']->format() }}</strong> a month after tax</p>
+                            <details class="mt-1 text-sm">
+                                <summary class="cursor-pointer text-blue-700">Where it comes from</summary>
+                                <dl class="mt-1 space-y-0.5">
+                                    @foreach ($stage['parts'] as $part)
+                                        <div class="flex justify-between gap-2"><dt>{{ $part['label'] }}</dt><dd class="tabular-nums">{{ $part['monthly']->format() }}</dd></div>
+                                    @endforeach
+                                </dl>
+                            </details>
+                        </div>
+                    @endforeach
+                </div>
+                <p class="mt-1 text-xs text-gray-600">Household income after all tax, in today's money, on the expected path.</p>
+            @endif
         </section>
     @endif
 

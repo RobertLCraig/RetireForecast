@@ -88,6 +88,17 @@ class ScenarioResultsTest extends TestCase
             ->assertSeeHtml("In today's money.");
     }
 
+    public function test_the_verdict_shows_monthly_net_income_at_three_stages(): void
+    {
+        // Board card 0222: what we live on each month, after tax, at the stages that matter.
+        Livewire::test(ScenarioResults::class, ['scenario' => $this->scenario()])
+            ->set('previewPaths', 30)
+            ->call('preview')
+            ->assertSeeHtmlInOrder(['data-verdict-hero', 'data-monthly-income', 'Now', 'After the first death'])
+            ->assertSee('a month after tax')
+            ->assertSeeHtml("in today's money, on the expected path");
+    }
+
     public function test_the_verdict_safe_spend_matches_afford(): void
     {
         // One solver, one figure: the results page and /afford read the same answer.
