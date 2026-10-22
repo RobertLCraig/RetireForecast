@@ -1374,7 +1374,8 @@
         <p class="note"><strong>Moving in.</strong> {{ $ladder['tenancyUpFront'] }}</p>
     @endif
     <p class="note">Rows are tinted: green where income covers the spend, plain where savings are being drawn on,
-        amber where the spend is not fully met, red where usable money sits below your safety buffer.</p>
+        amber where the spend is not fully met, red where usable money sits below your safety buffer.@if ($ladder['rentReferencing'])
+        A year marked "fails a reference" is one whose income would not pass a letting agent's standard reference.@endif</p>
 
     <h3>Where the money comes from each year</h3>
     <table class="dense">
@@ -1395,7 +1396,7 @@
                     'shortfall' => $row['shortfall'] && ! $row['belowFloor'],
                     'surplus' => $row['status'] === 'surplus' && ! $row['belowFloor'] && ! $row['shortfall'],
                 ])>
-                    <td>{{ $row['year'] }}</td>
+                    <td>{{ $row['year'] }}@if ($row['failsReference'])<br><em>fails a reference</em>@endif</td>
                     <td>{{ $row['ages'] }}</td>
                     @foreach ($ladder['sources'] as $source)
                         <td class="num">{{ $row['income'][$source] }}</td>

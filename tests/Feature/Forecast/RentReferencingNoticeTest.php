@@ -8,6 +8,7 @@ use App\Forecast\QuickWhatIf;
 use App\Forecast\ResultPresenter;
 use App\Forecast\ScenarioForecaster;
 use App\Forecast\WhatIfWriter;
+use App\Http\Controllers\ScenarioPdfController;
 use App\Livewire\ScenarioResults;
 use App\Models\Scenario;
 use App\Models\User;
@@ -169,5 +170,41 @@ final class RentReferencingNoticeTest extends TestCase
             ->assertSee('standard reference', escape: false)
             ->assertSee('guarantor', escape: false)
             ->assertSee(Tenancy::deposit(Money::fromPounds(18_000))->format(), escape: false);
+    }
+
+    /**
+     * Board card 0166. The banner says some years fail a reference; the table has to say which.
+     * Every row the ladder flags carries the mark, on screen and in the PDF, and no other row does.
+     */
+    public function test_the_cashflow_table_marks_the_rows_that_fail_a_reference(): void
+    {
+        $scenario = ScenarioFixture::rich($this->user);
+        $ladder = ResultPresenter::ladder($this->variantForecast($scenario, 'rent'));
+        $failing = array_values(array_map(
+            static fn (array $r): int => $r['year'],
+            array_filter($ladder['rows'], static fn (array $r): bool => $r['failsReference']),
+        ));
+        $this->assertNotSame([], $failing, 'the fixture must fail a reference in some year');
+        $this->assertNotSame(count($ladder['rows']), count($failing), 'the fixture must pass a reference in some year');
+
+        $screen = Livewire::test(ScenarioResults::class, ['scenario' => $scenario])->html();
+        $pdf = view('pdf.results', ['reports' => [app(ScenarioPdfController::class)->data($scenario)]])->render();
+
+        $this->assertSame($failing, $this->markedYears($screen), 'the results page must mark exactly the failing rows');
+        $this->assertSame($failing, $this->markedYears($pdf), 'the PDF must mark exactly the failing rows');
+    }
+
+    /** @return list<int> the years of the table rows that carry the referencing mark */
+    private function markedYears(string $html): array
+    {
+        preg_match_all('#<tr\b.*?</tr>#s', $html, $rows);
+        $years = [];
+        foreach ($rows[0] as $row) {
+            if (str_contains($row, 'fails a reference') && preg_match('#<t[hd]\b[^>]*>\s*(\d{4})#', $row, $m)) {
+                $years[(int) $m[1]] = true;
+            }
+        }
+
+        return array_keys($years);
     }
 }

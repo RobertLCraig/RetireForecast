@@ -1752,7 +1752,7 @@
             @endif
             {{-- gray-600, not gray-500: the tinted swatch spans below inherit it, and gray-500 on the
                  red-50 tint is 4.42:1 (under AA). --}}
-            <p class="mt-1 text-xs text-gray-600">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.</p>
+            <p class="mt-1 text-xs text-gray-600">Rows are tinted: <span class="rounded bg-green-50 px-1">surplus</span> (income covers spend), plain (drawing on savings), <span class="rounded bg-amber-50 px-1">shortfall</span> (spend not fully met), <span class="rounded bg-red-50 px-1">below buffer</span>.@if ($ladder['rentReferencing']) A year marked "fails a reference" is one whose income would not pass a letting agent's standard reference.@endif</p>
             @if ($ladder['showGrowth'])
                 <p class="mt-1 text-xs text-gray-500">Your investments earn in two ways: <strong>Investment income</strong> (interest on cash and dividends from funds) is paid out and taxed each year, so it's part of the income columns; <strong>Investment growth</strong> is the rise in the value of your funds/shares — it stays invested (taxed only as capital gains if you later sell outside an ISA/pension), which is why wealth can grow even in a year you're drawing down.</p>
             @endif
@@ -1789,7 +1789,10 @@
                                 'bg-amber-50' => $row['shortfall'] && ! $row['belowFloor'],
                                 'bg-green-50' => $row['status'] === 'surplus' && ! $row['belowFloor'],
                             ])>
-                                <th scope="row" class="{{ $td }} font-medium">{{ $row['year'] }}</th>
+                                <th scope="row" class="{{ $td }} font-medium">
+                                    {{ $row['year'] }}
+                                    @if ($row['failsReference'])<span class="block text-xs font-medium text-amber-700">fails a reference</span>@endif
+                                </th>
                                 <td class="{{ $td }}">{{ $row['ages'] }}</td>
                                 @foreach ($ladder['sources'] as $source)
                                     <td class="{{ $td }} text-right">{{ $row['income'][$source] }}</td>
