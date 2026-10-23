@@ -67,3 +67,26 @@ The first take's work stands: test_the_carer_addition_stops_when_the_cared_for_p
 Both criteria need the source (SPC Regs 2002 Sch I Part II, and when Carer's Allowance stops after the cared-for person's AA/DLA care stops in a funded placement). Only a session with web access can finish this card, best together with 0118. Another unattended take will block the same way.
 
 **2026-10-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-23 manager (m20261023221449-ee92)
+
+**outcome: rob**
+
+Only an attended session can do the work that is left, because it needs the web.
+
+**what the session said**
+
+Both criteria are still open, and the code matches what the builder reported:
+
+- `CareMeansTestedChargeTest::test_the_carer_addition_stops_when_the_cared_for_partner_is_in_a_funded_placement` exists.
+- The carer rule in `PathProjector::pensionCreditAward()` (the `$qualifies` check against `$inFundedCarePlacement`) is unchanged.
+- `docs/spec/ASSUMPTIONS.md` section 25 says the carer rule is stated, but nobody has checked it against a source.
+
+The only thing missing is the published rule. That needs web access. An unattended session cannot search the web, so both takes were blocked. Sending the card back to the loop would block a third time. The owner does not need to decide anything. The missing step is a session with web access.
+
+What to do: start an attended session, or use `/research`. Look up SPC Regs 2002 Sch I Part II. Also find out when Carer's Allowance stops after the cared-for person's AA or DLA care component stops in a funded placement. Do this together with card 0118. Then move 0181 back to `todo/`.
+
+WHY: Only an attended session can do the work that is left, because it needs the web.
+
+OUTCOME: rob
+
