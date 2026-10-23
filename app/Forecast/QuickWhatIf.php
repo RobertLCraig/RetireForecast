@@ -128,7 +128,7 @@ final class QuickWhatIf
 
     /**
      * "Claim Attendance Allowance": every member who does not already receive a disability benefit
-     * claims one from {@see ATTENDANCE_ALLOWANCE_FROM_AGE}, and its money arrives with it as a
+     * (the flag ticked, or a `disability_benefit` income row of their own) claims one from {@see ATTENDANCE_ALLOWANCE_FROM_AGE}, and its money arrives with it as a
      * tax-free income stream from the same age. Two separate things have to move together, which is
      * exactly why this is a preset rather than four hand edits: the FLAG is what opens the Pension
      * Credit severe-disability addition (and the carer addition where a partner cares), and the
@@ -144,8 +144,12 @@ final class QuickWhatIf
     private static function claimAttendanceAllowance(array $state, string $baseTaxYear): ?array
     {
         $people = is_array($state['people'] ?? null) ? $state['people'] : [];
-        $claimants = array_values(array_filter($people, static fn (array $p): bool => ! ($p['receivesDisabilityBenefit'] ?? false)));
-        if ($claimants === []) {
+        $streams = $state['incomeStreams'] ?? [];
+        // An existing disability_benefit row is a claim already being paid, ticked or not (card 0177).
+        $paid = array_column(array_filter($streams, static fn ($s): bool => is_array($s) && ($s['type'] ?? null) === 'disability_benefit'), 'ownerId');
+        $claims = static fn (array $p): bool => ! ($p['receivesDisabilityBenefit'] ?? false)
+            && ! in_array((string) ($p['id'] ?? 'p1'), $paid, true);
+        if (array_filter($people, $claims) === []) {
             return null;
         }
 
@@ -155,9 +159,8 @@ final class QuickWhatIf
         $fromAge = (string) self::ATTENDANCE_ALLOWANCE_FROM_AGE;
 
         $edited = $state;
-        $streams = $state['incomeStreams'] ?? [];
         foreach ($people as $i => $person) {
-            if ($person['receivesDisabilityBenefit'] ?? false) {
+            if (! $claims($person)) {
                 continue;
             }
             $edited['people'][$i]['receivesDisabilityBenefit'] = true;

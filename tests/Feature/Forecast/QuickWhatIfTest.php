@@ -115,6 +115,24 @@ class QuickWhatIfTest extends TestCase
         $this->assertNull(QuickWhatIf::build($base, 'claim_attendance_allowance'));
     }
 
+    public function test_the_attendance_allowance_preset_does_not_stack_a_second_disability_stream(): void
+    {
+        // Card 0177. P1 already has the benefit's money as an income row but left the flag unticked.
+        // Picking claimants on the flag alone added a second stream for P1 and paid it twice.
+        $state = ScenarioFixture::richState();
+        $state['incomeStreams'][] = ['id' => 'dla1', 'ownerId' => 'p1', 'type' => 'disability_benefit',
+            'grossAnnual' => '4000', 'frequency' => 'annual', 'taxable' => false, 'inflationLinked' => true,
+            'startAge' => '60', 'endAge' => ''];
+        $base = ScenarioFixture::fromState(User::factory()->create(), $state);
+
+        $overrides = QuickWhatIf::build($base, 'claim_attendance_allowance')['overrides'];
+
+        $added = array_filter($overrides, fn ($v): bool => is_array($v) && ($v['type'] ?? null) === 'disability_benefit');
+        $this->assertSame(['p2'], array_values(array_map(fn (array $s): string => $s['ownerId'], $added)));
+        $this->assertArrayNotHasKey('people.p1.receivesDisabilityBenefit', $overrides);
+        $this->assertTrue($overrides['people.p2.receivesDisabilityBenefit']);
+    }
+
     public function test_a_preset_that_would_change_nothing_builds_nothing(): void
     {
         // A lone retired person with no retirement age: "retire later" has nothing to move.
