@@ -530,6 +530,10 @@ not shifted.
    - **Disabled band reduction: charged as the band below, and band A reduced by one ninth of band
      D** (`CouncilTaxBand::reducedNinths()`). Council Tax (Reductions for Disabilities) Regulations
      1992: https://www.legislation.gov.uk/uksi/1992/554
+   - **Class E exemption: nothing is charged on a home left empty because every living member is
+     in permanent care** (`PathProjector::councilTaxNominal`, board card 0180). Council Tax (Exempt
+     Dwellings) Order 1992 art. 3: https://www.legislation.gov.uk/uksi/1992/558/article/3. Also
+     STATED, not verified: the card 0180 session had no web, so it has no verified_on date yet.
 
    One modelling call sits beside them and is NOT statutory: the Council Tax Reduction applicable
    amount is the Pension Credit one the engine already computes, rather than the CTR scheme's own

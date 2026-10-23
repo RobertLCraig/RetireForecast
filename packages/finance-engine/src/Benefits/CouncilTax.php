@@ -52,6 +52,12 @@ use RetireForecast\FinanceEngine\Money\Percent;
  * scheme and its taper), but the unattended build loop that added them had no web access, so
  * neither citation was fetched and neither carries a verified_on date. Board card 0111 carries
  * pinning them to a primary source. See docs/spec/ASSUMPTIONS.md §23.
+ *
+ * A home nobody lives in because every living member is in permanent care is charged nothing
+ * (PathProjector::councilTaxNominal): Class E of the Council Tax (Exempt Dwellings) Order 1992,
+ * art. 3, https://www.legislation.gov.uk/uksi/1992/558/article/3. It exempts a dwelling left
+ * unoccupied by an owner or tenant whose sole or main residence is now a care home. **STATED, not verified**: the
+ * board card 0180 session had no web, so it was not fetched and carries no verified_on date.
  */
 final class CouncilTax
 {

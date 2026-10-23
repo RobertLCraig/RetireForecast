@@ -166,7 +166,7 @@ Rob's call on card 0151:_
   `ENGINE_VERSION` is `finance-engine/council-tax-single-occupant-beside-care`; the **re-run is
   owed** only for two-member plans with a split council tax bill and a care spell. The PLSA benchmark now
   counts a split bill, and the demo's running costs dropped to £2,800 so its £2,200 bill is not
-  paid twice. A home left empty for care is card 0180. The new upkeep-note sentence and builder
+  paid twice. A home left empty for care pays none (card 0180, re-run owed). The new upkeep-note sentence and builder
   hint are **not seen in a browser**.
 
 - **SMI is met only on a home the household lives in, and care nets its charge.** Card 0045 #1

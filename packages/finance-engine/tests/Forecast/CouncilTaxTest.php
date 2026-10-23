@@ -211,6 +211,40 @@ final class CouncilTaxTest extends TestCase
         $this->assertSame($discounted, $inCare->councilTax()->pence, 'the partner left at home is a single occupant');
     }
 
+    public function test_a_home_left_empty_for_care_is_exempt_from_council_tax(): void
+    {
+        // Board card 0180. A home nobody lives in because every living member is in permanent
+        // care is a Class E exempt dwelling. Both live to 95; p1 enters care at 85 and p2 at 86,
+        // so 2035 has one at home and 2036 has nobody at home, with the home still unsold.
+        $care = (new PathProjector(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)))->project(
+            $this->household([400, 400], isaBalance: 2_000_000),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            $this->careDraws(['p1' => 95, 'p2' => 95], ['p1' => 85, 'p2' => 86]),
+        );
+        $byYear = [];
+        foreach ($care->years as $year) {
+            $byYear[$year->calendarYear] = $year;
+        }
+
+        $this->assertSame((int) round(self::BILL * 100 * 0.75), $byYear[2035]->councilTax()->pence, 'one left at home is a single occupant');
+        $this->assertSame(2, $byYear[2036]->aliveCount, 'both members are still alive');
+        $this->assertGreaterThan(0, $byYear[2036]->propertyWealth->pence, 'the home is still held, not sold');
+        $this->assertSame(0, $byYear[2036]->councilTax()->pence, 'an empty home left for care pays no council tax');
+
+        // A lone member in care leaves the home just as empty.
+        $alone = (new PathProjector(TaxYearRegistry::for('2026-27', RegionProfile::EnglandWalesNi)))->project(
+            $this->household([400], isaBalance: 2_000_000),
+            new ForecastSettings(baseYear: 2026, baseTaxYear: '2026-27'),
+            $this->careDraws(['p1' => 95], ['p1' => 85]),
+        );
+        foreach ($alone->years as $year) {
+            if ($year->calendarYear === 2035) {
+                $this->assertGreaterThan(0, $year->propertyWealth->pence);
+                $this->assertSame(0, $year->councilTax()->pence, 'a lone resident in care pays nothing on the empty home');
+            }
+        }
+    }
+
     /**
      * Flat draws with a fixed care fee for each member from a given age to death.
      *

@@ -61,7 +61,11 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-23 (income-stream-ends-on-the-birthday): an income stream with an end age is
+     * Bumped 2026-10-23 (empty-home-in-care-pays-no-council-tax): a home nobody lives in because every
+     * living member is in permanent care is a Class E exempt dwelling, so it is charged no council
+     * tax. Only plans with a council tax bill and a care spell that covers every living member move,
+     * and their figures were too PESSIMISTIC. Card 0180.
+     * Previous bump 2026-10-23 (income-stream-ends-on-the-birthday): an income stream with an end age is
      * paid until the birthday one past it, so the year that birthday falls in pays the months before
      * it. Only plans with an income stream end age move. Card 0172.
      * Previous bump 2026-10-23 (cpi-db-pension-frozen-in-deflation): a CPI- or RPI-linked DB pension is
@@ -670,7 +674,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/income-stream-ends-on-the-birthday';
+    public const ENGINE_VERSION = 'finance-engine/empty-home-in-care-pays-no-council-tax';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

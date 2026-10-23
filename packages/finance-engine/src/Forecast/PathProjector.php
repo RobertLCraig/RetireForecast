@@ -1731,9 +1731,9 @@ final class PathProjector
             // SHRINKS — see councilTaxNominal for the three reliefs and the order they apply in.
             // The single-person discount turns on who LIVES there, not who is alive: a member in
             // permanent care is a disregarded person, so the partner left at home is a single
-            // occupant. With nobody left at home it falls back to the living count, as before.
+            // occupant. With nobody left at home the home is exempt (board card 0180).
             // $atHome is counted above, beside the rent.
-            $councilTaxNominal = $this->councilTaxNominal($household, $settings, $renting, $state, $pensionCreditAward, $atHome ?: $aliveCount);
+            $councilTaxNominal = $this->councilTaxNominal($household, $settings, $renting, $state, $pensionCreditAward, $atHome);
             $spendNominal += $councilTaxNominal;
             $essentialNominal += $councilTaxNominal;
 
@@ -1897,7 +1897,7 @@ final class PathProjector
             $supportFrom = fn (?PensionCreditResult $award): array => [
                 $award?->guaranteeCreditWeekly->pence ?? 0,
                 $this->housingBenefitNominal($household, $settings, $supportState, $award, $rentChargedNominal),
-                $this->councilTaxNominal($household, $settings, $renting, $supportState, $award, $atHome ?: $aliveCount),
+                $this->councilTaxNominal($household, $settings, $renting, $supportState, $award, $atHome),
             ];
             if ($pensionCreditAward === null
                 || $assessablePensionDrawn === $assessedDrawNominal
@@ -2347,7 +2347,9 @@ final class PathProjector
             $renting => [$home?->annualCouncilTax, $home?->disabledBandReduction],
             default => [null, null],
         };
-        if ($bill === null) {
+        // Nobody lives there because every living member is in permanent care: the home is a
+        // Class E exempt dwelling, so nothing is charged (board card 0180, source on CouncilTax).
+        if ($bill === null || $occupants === 0) {
             return 0;
         }
 
