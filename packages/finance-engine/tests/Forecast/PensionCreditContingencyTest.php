@@ -124,6 +124,45 @@ final class PensionCreditContingencyTest extends TestCase
             'below the limit, nothing to warn about');
         $this->assertContains(WarningCode::CAPITAL_CLIFF_HB_CTS, $this->codes($years[2029]),
             'the year assessable capital is above the limit carries the cliff warning');
+
+        // Board card 0179: the warning is gated on SOMEONE alive being over State Pension age, not
+        // everyone. A mixed-age couple with £50,000 is still warned from year 0, because one of
+        // them has reached the age the pension-age rules are about.
+        $mixed = $this->byYear(new Household(
+            'Mixed', RegionProfile::EnglandWalesNi,
+            [
+                new Person('p1', new DateTimeImmutable('1958-04-01'), Sex::Female, EmploymentStatus::Retired),
+                new Person('p2', new DateTimeImmutable('1980-09-01'), Sex::Male, EmploymentStatus::Retired),
+            ],
+            new ExpenseProfile(Money::fromPounds(12_000), Money::zero(), Percent::fromPercent(70)),
+            [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 0))],
+            [new Account('p1', AccountType::Cash, Money::fromPounds(50_000))],
+        ));
+        $this->assertContains(WarningCode::CAPITAL_CLIFF_HB_CTS, $this->codes($mixed[2026]),
+            'one member over State Pension age is enough for the cliff to be warned');
+    }
+
+    public function test_a_working_age_household_with_savings_is_not_warned_about_the_capital_cliff(): void
+    {
+        // Board card 0179. A 46-year-old with £200,000 in cash is far above the £16,000 limit in
+        // every year, but before State Pension age (68, so 2048, for a 1980 birth) new help with rent is
+        // Universal Credit, not Housing Benefit, so the pension-age cliff is not theirs to be told.
+        $years = $this->byYear(new Household(
+            'Young', RegionProfile::EnglandWalesNi,
+            [new Person('p1', new DateTimeImmutable('1980-04-01'), Sex::Female, EmploymentStatus::Retired)],
+            new ExpenseProfile(Money::fromPounds(3_000), Money::zero(), Percent::fromPercent(70)),
+            [new StatePensionEntitlement('p1', weeklyForecast: Money::of(241, 0))],
+            [new Account('p1', AccountType::Cash, Money::fromPounds(200_000))],
+        ));
+
+        foreach ($years as $calendarYear => $year) {
+            if ($calendarYear < 2048) {
+                $this->assertNotContains(WarningCode::CAPITAL_CLIFF_HB_CTS, $this->codes($year),
+                    "{$calendarYear} is before State Pension age");
+            }
+        }
+        $this->assertContains(WarningCode::CAPITAL_CLIFF_HB_CTS, $this->codes($years[2048]),
+            'the year State Pension age is reached, the same savings are warned');
     }
 
     public function test_a_household_on_guarantee_credit_is_not_warned_that_capital_ends_its_help(): void

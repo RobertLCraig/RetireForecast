@@ -2447,9 +2447,9 @@ final class PathProjector
      * claim from: the engine models Guarantee Credit alone and applies no income disregards, so at
      * that distance its own simplifications can be the whole of the gap.
      *
-     * The cliff is assessed in EVERY year, not only from pension age: the £16,000 limit applies to
-     * working-age Housing Benefit too, and a plan that frees equity before State Pension age would
-     * otherwise cross it in silence.
+     * The cliff is warned only in a year someone alive has reached State Pension age (board card
+     * 0179). Before that, new help with rent is Universal Credit, not Housing Benefit, and this
+     * tool models neither, so warning a working household with savings named the wrong benefits.
      *
      * A third, added by board card 0051: the MIXED-AGE COUPLE trap. Where one member is under
      * State Pension age the qualifying-age gate returns no award at all, which is correct and was
@@ -2465,10 +2465,6 @@ final class PathProjector
      */
     private function benefitContingencyWarnings(Household $household, array $state, ?PensionCreditResult $award, bool $onGuaranteeCredit, array $alive, int $calendarYear): array
     {
-        $warnings = $this->capitalAssessment
-            ->assess($this->meansTestAssessableCapital($household, $state), $onGuaranteeCredit)
-            ->warnings;
-
         $overPensionAge = 0;
         $underPensionAge = 0;
         foreach ($household->persons as $person) {
@@ -2477,6 +2473,11 @@ final class PathProjector
             }
             $calendarYear < $state['spaYear'][$person->id] ? $underPensionAge++ : $overPensionAge++;
         }
+
+        $warnings = $overPensionAge === 0 ? [] : $this->capitalAssessment
+            ->assess($this->meansTestAssessableCapital($household, $state), $onGuaranteeCredit)
+            ->warnings;
+
         if ($overPensionAge > 0 && $underPensionAge > 0) {
             $warnings[] = new Warning(WarningCode::MIXED_AGE_COUPLE, self::MIXED_AGE_COUPLE_MESSAGE);
         }

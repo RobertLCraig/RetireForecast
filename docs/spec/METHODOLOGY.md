@@ -171,7 +171,9 @@ surprise:
   treated as £1 a week of income.
 - **The £16,000 cliff:** Housing Benefit and Council Tax Support stop once savings exceed £16,000.
   (Pension Credit itself has no upper capital limit.) The forecast flags the first year your
-  assessable capital is above the limit, as a note on your inputs. **One exception:** a household
+  assessable capital is above the limit, as a note on your inputs, once one of you has reached State
+  Pension age. Before then, help with rent comes from Universal Credit, which is not modelled.
+  **One exception:** a household
   actually being paid Guarantee Credit is passported to both with no upper capital limit, so it is
   never told its savings have ended them.
 - **Pension Credit** (Guarantee Credit) is calculated **every year of the projection**: the minimum
