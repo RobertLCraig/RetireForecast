@@ -53,3 +53,11 @@ WebFetch was refused in this session, so no published rule was read. Neither cri
 #2: section 25 now records the carer rule as STATED, not verified, naming SPC Regs 2002 Sch I Part II. No source, no verified_on, and it says plainly that no search ran. Not met.
 No rule moved, so ENGINE_VERSION is unchanged. A session with web access can finish both criteria together with 0118.
 0226: Pension Credit still assesses a couple as one household when one partner is permanently in care (stated from memory, needs the source).
+
+**2026-10-23** RESULT: blocked
+TESTS: +0 new, all green
+TOUCHED: none
+OUT-OF-SCOPE: 0226
+Second take. WebSearch and WebFetch were both refused in this unattended session, so the published rule could not be read. Nothing new was built.
+The first take's work stands: test_the_carer_addition_stops_when_the_cared_for_partner_is_in_a_funded_placement still passes, and ASSUMPTIONS section 25 records the carer rule as STATED, not verified.
+Both criteria need the source (SPC Regs 2002 Sch I Part II, and when Carer's Allowance stops after the cared-for person's AA/DLA care stops in a funded placement). Only a session with web access can finish this card, best together with 0118. Another unattended take will block the same way.
