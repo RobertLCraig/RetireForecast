@@ -334,7 +334,7 @@ final class PathProjector
      * deceased's will, the survivor's residence position, and whether there are children to take a
      * share under intestacy. The engine holds no list of children, so `hasDescendants` is the
      * reader's yes or no to that, defaulting to yes (the adverse answer). It is deliberately NOT
-     * `homeToDescendants`, which is about the home at the last death: unticking that once handed
+     * `homeToDescendants`, which is about who takes the estate at the last death: unticking that once handed
      * an intestate estate back to the spouse in full (board card 0054).
      *
      * @param  array<string, mixed>  $state

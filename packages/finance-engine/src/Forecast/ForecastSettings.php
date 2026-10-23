@@ -49,8 +49,9 @@ use RetireForecast\FinanceEngine\StatePension\StatePensionUprating;
  * Inheritance Tax due (relationship-status aware — see {@see RelationshipStatus}),
  * surfaced as {@see ForecastResult::$iht}. Default false, so an existing run is unchanged
  * (the IHT toggle was collected but not consumed before this). $homeToDescendants says the
- * home is left to direct descendants, which is what unlocks the residence nil-rate band on
- * the final death; default true (the common case when a household owns a home).
+ * ESTATE is left to direct descendants (board card 0184; the name predates that), which is what
+ * unlocks the residence nil-rate band and the downsizing addition on the final death. It is not
+ * about a home: a renter with no home still answers it. Default true.
  *
  * $useIsaAllowance, when true (the default), has the household use each person's unused ISA
  * subscription allowance each year on money they already hold in a taxable General Investment
@@ -118,7 +119,7 @@ final class ForecastSettings
          * Are there children or other direct descendants to take a share of an intestate estate
          * (board card 0054)? Default true, the adverse answer: with issue, a spouse with no will
          * takes only the statutory legacy and half the rest, and the children's half is chargeable.
-         * It is its own question, not $homeToDescendants, which is about the HOME at the last death.
+         * It is its own question, not $homeToDescendants, which is about who takes the estate at the last death.
          */
         public readonly bool $hasDescendants = true,
         /**

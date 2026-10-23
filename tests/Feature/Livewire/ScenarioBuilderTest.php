@@ -242,6 +242,32 @@ class ScenarioBuilderTest extends TestCase
     }
 
     /**
+     * Board card 0184. The downsizing addition is gated on `homeToDescendants`, and the statute asks
+     * whether the ESTATE passes to direct descendants, not whether a home does. The box used to ask
+     * about "your home", which a renter with no home naturally unticks, losing the addition with no
+     * warning. So the box asks about the estate, and a renter who answers yes keeps the addition.
+     */
+    public function test_a_renter_leaving_the_estate_to_children_keeps_the_downsizing_addition(): void
+    {
+        $component = Livewire::test(ScenarioBuilder::class);
+        foreach (BuilderStateFixture::minimalValid() as $key => $value) {
+            $component->set($key, $value);
+        }
+        $component->set('ihtModelled', true)->set('accounts', [
+            ['id' => 'acc1', 'ownerId' => 'p1', 'type' => 'cash', 'balance' => '900000', 'unrealisedGain' => '', 'yield' => ''],
+        ])->set('priorHomeSaleValue', '300000')->set('priorHomeSaleYear', '2020');
+
+        // The question a renter answers is about the estate, not a home they do not own.
+        $component->assertSee('Leaving your estate to your children / direct descendants')
+            ->assertDontSee('Leaving your home to your children');
+
+        $component->set('homeToDescendants', true)->call('save')->assertHasNoErrors();
+        $renter = Scenario::latest('id')->firstOrFail();
+        $this->assertNull(app(HouseholdAssembler::class)->household($renter->effectiveBuilderState())->primaryResidence);
+        $this->assertGreaterThan(0, (new ScenarioForecaster)->deterministic($renter)->iht->secondDeath->downsizingAddition->pence);
+    }
+
+    /**
      * Board card 0110 #1. Whether Pension Credit is actually claimed is the reader's to say. It
      * defaults to claimed and is stored only when not, so no stored scenario moves.
      */

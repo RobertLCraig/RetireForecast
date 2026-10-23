@@ -121,9 +121,10 @@ class ScenarioBuilder extends Component
     public bool $ihtModelled = false;
 
     /**
-     * Whether the home is left to direct descendants (children / grandchildren), which is what
-     * unlocks the £175k residence nil-rate band on the final death. Default on (the common case for
-     * a homeowner); only relevant when IHT is modelled and there is a home.
+     * Whether the estate is left to direct descendants (children / grandchildren), which is what
+     * unlocks the £175k residence nil-rate band and the downsizing addition on the final death
+     * (card 0184: it asks about the estate, so a renter with no home answers it too). Default on;
+     * only relevant when IHT is modelled.
      */
     public bool $homeToDescendants = true;
 

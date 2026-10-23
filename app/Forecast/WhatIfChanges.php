@@ -163,7 +163,7 @@ final class WhatIfChanges
         $topLevel = [
             'variant' => 'Primary option', 'region' => 'Tax region', 'baseTaxYear' => 'Base tax year',
             'ihtModelled' => 'Model inheritance tax', 'householdName' => 'Household name',
-            'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave home to descendants',
+            'relationshipStatus' => 'Relationship status', 'homeToDescendants' => 'Leave estate to descendants',
             'hasDescendants' => 'Children or other descendants',
             'pensionCreditClaimed' => 'Pension Credit claimed',
             'nonDependantAdults' => 'Other adults living in the home',

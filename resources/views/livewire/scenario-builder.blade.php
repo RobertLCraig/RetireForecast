@@ -291,9 +291,9 @@
                         @if ($ihtModelled)
                         <label class="mt-2 flex items-center gap-2 pl-6 text-sm text-gray-700">
                             <input type="checkbox" wire:model="homeToDescendants" class="rounded border-gray-300">
-                            Leaving your home to your children / direct descendants
+                            Leaving your estate to your children / direct descendants
                         </label>
-                        <p class="mt-1 pl-6 text-xs text-gray-500">Unlocks the £175,000 residence nil-rate band per person (only when the home passes to direct descendants). Untick if it will not.</p>
+                        <p class="mt-1 pl-6 text-xs text-gray-500">Unlocks the £175,000 residence nil-rate band per person on a home you leave to them, and the downsizing addition on a home you sold or downsized from. Keep it ticked if you rent and have no home to leave. Untick only if your estate will not go to direct descendants.</p>
                         <label class="mt-2 flex items-center gap-2 pl-6 text-sm text-gray-700">
                             <input type="checkbox" wire:model="hasDescendants" class="rounded border-gray-300">
                             There are children or other direct descendants
