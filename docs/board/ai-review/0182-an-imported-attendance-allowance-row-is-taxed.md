@@ -17,7 +17,7 @@ Found while building card 0050's import fix, which kept to the DLA keywords.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] WHEN an imported income row names Attendance Allowance, THE APP SHALL record it as a tax-free disability care component. proves: `test_an_imported_attendance_allowance_row_is_a_tax_free_care_component`
+- [x] WHEN an imported income row names Attendance Allowance, THE APP SHALL record it as a tax-free disability care component. proves: `test_an_imported_attendance_allowance_row_is_a_tax_free_care_component`
 <!-- AC:END -->
 
 ## Plan
@@ -25,3 +25,11 @@ One line in `incomeBlock()`: treat "attendance" like "dla". Extend
 `tests/Unit/Import/PayAndExpendituresTest.php`, whose `workbook()` takes extra income rows.
 
 ## Comments
+
+**2026-10-23** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: app/Import/Profiles/PayAndExpenditures.php
+tests/Unit/Import/PayAndExpendituresTest.php
+OUT-OF-SCOPE: none
+incomeBlock() now treats a label containing "attendance" like "dla": tax-free, typed disability_benefit (the care component). The new test was watched fail first with type 'other', then passed; full suite green, pint clean.
+Assumed: any income row whose label contains "attendance" is Attendance Allowance. No browser check needed or done (import parser only).
