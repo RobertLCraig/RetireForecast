@@ -594,6 +594,17 @@ not shifted.
    which is right for a real break in residence and wrong for a short hospital stay this engine
    cannot see.
 
+   The Pension Credit CARER addition stops the same way (board card 0181), for the same whole
+   year: a partner qualifies as a carer only while the cared-for partner's qualifying benefit is
+   in payment, which is the Carer's Allowance condition the addition rests on. It is **STATED, not
+   verified**, and carries no source and no verified_on date: the card 0181 session had no web
+   access, so no search was run, and this is not a record that a search found nothing. The rule
+   to pin is Schedule I, Part II of the State Pension Credit Regulations 2002 (SI 2002/1792), with
+   the Carer's Allowance conditions in the Social Security (Invalid Care Allowance) Regulations
+   1976. One question is open with it: whether the addition runs on for a period after Carer's
+   Allowance entitlement ends. If it does, dropping the whole first funded year is too early, the
+   adverse side. `CareMeansTestedChargeTest` pins the stop in a full funded year only.
+
 26. **The Inheritance Tax downsizing addition (added 2026-09-07; lives on
    `Iht\InheritanceTaxCalculator::downsizingAddition`).** Board card 0053. Where a qualifying
    former residence was disposed of on or after **8 July 2015** and the home left at death is

@@ -683,4 +683,50 @@ final class CareMeansTestedChargeTest extends TestCase
 
         $this->assertNull($result->careCostRealValue, 'no household-borne care cost on this path');
     }
+
+    /**
+     * Board card 0181. The Pension Credit carer addition rests on underlying entitlement to
+     * Carer's Allowance, which rests on the cared-for partner's qualifying disability benefit.
+     * That benefit stops in a care home the local authority funds, so the carer addition stops
+     * with it, and only there: before the placement it is paid.
+     *
+     * A couple on Guarantee Credit, both over State Pension age on £150 a week each, with £2,000
+     * of cash, so the tariff never bites. p2 receives a qualifying disability benefit and is in a
+     * funded placement from 88 (2046). The probe is the award with and without p1's carer flag:
+     * one disabled member of a couple earns no severe-disability addition, so the gap between
+     * the two is the carer addition alone. 2047 is the second funded year, past any part-year
+     * question of the first.
+     */
+    public function test_the_carer_addition_stops_when_the_cared_for_partner_is_in_a_funded_placement(): void
+    {
+        $award = function (bool $cares): array {
+            $household = new Household(
+                'CarerBesideFundedPlacement', RegionProfile::EnglandWalesNi,
+                [
+                    new Person('p1', new DateTimeImmutable('1958-01-01'), Sex::Female, EmploymentStatus::Retired, caresForPartner: $cares),
+                    new Person('p2', new DateTimeImmutable('1958-01-01'), Sex::Male, EmploymentStatus::Retired, receivesDisabilityBenefit: true),
+                ],
+                $this->spend(30_000),
+                pensions: [
+                    new StatePensionEntitlement('p1', weeklyForecast: Money::fromPounds(150)),
+                    new StatePensionEntitlement('p2', weeklyForecast: Money::fromPounds(150)),
+                ],
+                accounts: [new Account('p2', AccountType::Cash, Money::fromPounds(2_000))],
+            );
+
+            $byYear = [];
+            foreach ($this->project($household, deathAges: ['p1' => 95, 'p2' => 95], careFromAge: ['p2' => 88])->years as $year) {
+                $byYear[$year->calendarYear] = $year->incomeBySource['means_tested_benefit']->pence;
+            }
+
+            return $byYear;
+        };
+
+        $carer = $award(true);
+        $noCarer = $award(false);
+
+        $this->assertGreaterThan(0, $carer[2045] - $noCarer[2045], 'the carer addition is paid before the placement');
+        $this->assertGreaterThan(0, $carer[2047], 'the couple is still on Guarantee Credit in the funded year');
+        $this->assertSame($noCarer[2047], $carer[2047], 'and the carer addition has stopped with the qualifying benefit');
+    }
 }
