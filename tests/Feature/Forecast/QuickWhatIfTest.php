@@ -133,6 +133,26 @@ class QuickWhatIfTest extends TestCase
         $this->assertTrue($overrides['people.p2.receivesDisabilityBenefit']);
     }
 
+    public function test_the_retire_later_preset_shows_the_carer_earnings_limit(): void
+    {
+        // Card 0178. "Retire 2 years later" extends working life just as the retirement-age lever
+        // does, so it carries the same Carer's Allowance earnings-limit warning (card 0044).
+        $state = BuilderStateFixture::full();
+        $state['people'][0]['caresForPartner'] = true;          // p1 is the employed one
+        $state['people'][1]['receivesDisabilityBenefit'] = true;
+        $carer = ScenarioFixture::fromState(User::factory()->create(), $state);
+        $limit = TaxYearRegistry::for($carer->base_tax_year)->benefits->carersAllowanceEarningsLimitWeekly;
+
+        $this->blade('<x-quick-what-ifs :scenario="$s" />', ['s' => $carer])
+            ->assertSee("Carer's Allowance has a weekly earnings limit of {$limit->format()}");
+
+        // Nobody caring: the preset says nothing about it.
+        $plain = ScenarioFixture::rich(User::factory()->create());
+        $this->blade('<x-quick-what-ifs :scenario="$s" />', ['s' => $plain])
+            ->assertSee('Retire 2 years later')
+            ->assertDontSee("Carer's Allowance");
+    }
+
     public function test_a_preset_that_would_change_nothing_builds_nothing(): void
     {
         // A lone retired person with no retirement age: "retire later" has nothing to move.

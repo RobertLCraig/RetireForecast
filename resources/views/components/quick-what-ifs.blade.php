@@ -14,6 +14,9 @@
                 {{ $label }}
             </button>
         </form>
+        @if ($caveat = \App\Forecast\QuickWhatIf::caveat($scenario, $preset))
+            <p class="basis-full rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{{ $caveat }}</p>
+        @endif
     @endforeach
 
     {{-- One-click buy-vs-rent: generates the alternative housing strategies as what-ifs and

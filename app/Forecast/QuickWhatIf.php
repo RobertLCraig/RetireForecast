@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Forecast;
 
+use App\DecisionSupport\LeverKey;
+use App\DecisionSupport\ThresholdPresenter;
 use App\Models\Scenario;
 use Illuminate\Support\Str;
+use RetireForecast\FinanceEngine\Dto\EmploymentStatus;
 use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\TaxYear\TaxYearRegistry;
 
@@ -77,6 +80,31 @@ final class QuickWhatIf
         }
 
         return ['name' => self::PRESETS[$preset], 'overrides' => $overrides];
+    }
+
+    /**
+     * A warning to show beside $preset's button, or null. Only "Retire 2 years later" carries one:
+     * it extends working life exactly as the retirement-age lever does, so it reuses that lever's
+     * Carer's Allowance earnings-limit caveat (card 0178), asked up to the latest age the preset
+     * moves anyone to.
+     */
+    public static function caveat(Scenario $base, string $preset): ?string
+    {
+        if ($preset !== 'retire_2_years_later') {
+            return null;
+        }
+
+        $household = $base->toHousehold();
+        $ages = [];
+        foreach ($household->persons as $person) {
+            if ($person->plannedRetirementAge !== null
+                && in_array($person->employmentStatus, [EmploymentStatus::Employed, EmploymentStatus::SelfEmployed], true)) {
+                $ages[] = min(80, $person->plannedRetirementAge + 2);
+            }
+        }
+
+        return $ages === [] ? null
+            : ThresholdPresenter::leverCaveat(LeverKey::RetirementAge, $household, $base->base_tax_year, max($ages));
     }
 
     /**
