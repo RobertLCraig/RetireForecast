@@ -1,5 +1,9 @@
 # A home left empty for care is charged council tax as if somebody still lived there
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0047 #2 made the single-person discount turn on who lives in the home, so a partner in
 permanent care leaves the other a single occupant. It left one case alone. When EVERY living member
@@ -63,3 +67,5 @@ Second take re-ran the full suite (green) and pint (clean), and changed no file.
 Not met, #1: it asks for the exemption 'sourced and dated'. WebFetch was refused again in this session, so Class E (SI 1992/558 art. 3, https://www.legislation.gov.uk/uksi/1992/558/article/3) stays STATED, not verified, with no verified_on date. To finish, in a session with web: fetch that page, confirm Class E covers an owner or tenant now resident in a care home, and add verified_on in CouncilTax.php and ASSUMPTIONS §23. This is the only thing left; a loop session cannot do it.
 Assumed: a let-and-rent plan's rented home left empty for care is exempt too (Class E covers tenants).
 Still needs a browser check (Herd serves C:\Dev\RetireForecast, not this worktree).
+
+**2026-10-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
