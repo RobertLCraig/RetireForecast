@@ -41,3 +41,15 @@ closure. Tests sit beside the 0050 ones in
 `packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php`.
 
 ## Comments
+
+**2026-10-23** RESULT: partial
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/tests/Forecast/CareMeansTestedChargeTest.php
+TOUCHED: docs/spec/ASSUMPTIONS.md
+TOUCHED: docs/board/todo/0226-pension-credit-still-assesses-a-couple-when-one-is-in-care.md
+OUT-OF-SCOPE: 0226
+WebFetch was refused in this session, so no published rule was read. Neither criterion is claimed.
+#1: test_the_carer_addition_stops_when_the_cared_for_partner_is_in_a_funded_placement pins the stop in a FULL funded year (2047) and the addition paid before care (2045). Watched red with the carer loop reading the bare qualifying-benefit predicate. Not met: 'only as the published rule says' needs the source, and the first funded year (whole-year drop vs 28 days plus any run-on of the addition after Carer's Allowance ends) is untested on purpose.
+#2: section 25 now records the carer rule as STATED, not verified, naming SPC Regs 2002 Sch I Part II. No source, no verified_on, and it says plainly that no search ran. Not met.
+No rule moved, so ENGINE_VERSION is unchanged. A session with web access can finish both criteria together with 0118.
+0226: Pension Credit still assesses a couple as one household when one partner is permanently in care (stated from memory, needs the source).
