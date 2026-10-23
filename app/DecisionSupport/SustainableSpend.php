@@ -7,6 +7,7 @@ namespace App\DecisionSupport;
 use App\Forecast\ScenarioForecaster;
 use App\Models\Scenario;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
+use RetireForecast\FinanceEngine\Forecast\ForecastResult;
 use RetireForecast\FinanceEngine\Money\Money;
 use RetireForecast\FinanceEngine\Mortality\CohortLifeTable;
 use RetireForecast\FinanceEngine\Sweep\Lever\DiscretionarySpendLever;
@@ -114,6 +115,19 @@ final class SustainableSpend
         }
 
         return self::result($low, false);
+    }
+
+    /**
+     * The scenario's own plan re-forecast with its discretionary spend set to $annual, so a screen
+     * can show what that budget means year by year (a survivor's spend is scaled, not flat).
+     */
+    public function forecastAt(Scenario $scenario, Money $annual): ForecastResult
+    {
+        ['assumptions' => $assumptions] = $inputs = $this->forecaster->variantInputs($scenario);
+        $swept = (new DiscretionarySpendLever)->apply($inputs['household'], $inputs['settings'], $annual->pence / 100);
+
+        return (new DeterministicForecaster($this->forecaster->config($scenario), new CohortLifeTable))
+            ->forecast($swept->household, $assumptions, $swept->settings);
     }
 
     /**

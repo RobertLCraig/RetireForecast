@@ -73,6 +73,7 @@
                             {{-- The verdict landing, offered for every forecast (B1): a single plan
                                  needs the "how sure" answer as much as a family of what-ifs does. --}}
                             <a href="{{ route('scenarios.afford', $scenario) }}" class="rounded-md bg-green-700 px-3 py-1.5 text-white hover:bg-green-800">What can I afford?</a>
+                            <a href="{{ route('scenarios.money', $scenario) }}" class="hover:text-blue-700">Income and spending</a>
                             <a href="{{ route('scenarios.child', $scenario) }}" class="hover:text-blue-700">Create what-if</a>
                             @if ($scenario->children->isNotEmpty())
                                 <a href="{{ route('scenarios.compare', $scenario) }}" class="hover:text-blue-700">Compare</a>

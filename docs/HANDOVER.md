@@ -5,7 +5,7 @@
 **Stage:** active
 **Category:** site
 **Status:** **Feature-complete for personal use, and now carrying a large reviewed defect backlog.** The engine, the app, the post-v1 enhancement backlog, decision-support (Phases 0 to 6), the local assistant, IHT and the care means-test are all built. A five-discipline expert review on 2026-08-19 found defects across all of them, several of which change which plan the comparison ranks first. What remains is that backlog, Rob's **browser sign-off**, and the **public-release blockers**.
-_Last updated: 2026-10-22 (cards 0212 to 0224, the 2026-10-21 full review). The exceptions a fresh session needs, newest first. The "what is built"
+_Last updated: 2026-10-23 (cards 0212 to 0225, the 2026-10-21 full review). The exceptions a fresh session needs, newest first. The "what is built"
 inventory and the older card bullets were folded out to [docs/HANDOVER-ARCHIVE.md](HANDOVER-ARCHIVE.md).
 `HandoverHygieneTest` fails this file above 40 KB. The rule for which bullets to fold next is
 Rob's call on card 0151:_
@@ -13,7 +13,8 @@ Rob's call on card 0151:_
 - **The results page leads with the answer, in plain words.** Cards 0216 to 0224, all in
   ai-review and **none seen in a browser**. A run from an older engine now shows an amber "out of
   date: re-run it" box (card 0219), so every stored result shows it until the re-run below.
-  A Welsh home is refused with a reason (card 0215).
+  A Welsh home is refused with a reason (card 0215). `/scenarios/{id}/money` shows income by
+  source and what it lets you spend (card 0225).
 
 - **An income stream with an end age stops on the birthday after it, not on 1 January.** Card 0172.
   `ENGINE_VERSION` is `finance-engine/income-stream-ends-on-the-birthday`; the **re-run is owed**

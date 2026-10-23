@@ -2033,6 +2033,96 @@ final class ResultPresenter
      */
     public static function monthlyNetIncome(Household $household, ForecastResult $forecast): array
     {
+        return array_map(function (array $stage): array {
+            [$label, $y] = $stage;
+            $parts = [];
+            $income = Money::zero();
+            foreach (self::incomeBands() as [$name, $sources]) {
+                $annual = Money::zero();
+                foreach ($sources as $source) {
+                    $annual = $annual->plus($y->incomeBySource[$source] ?? Money::zero());
+                }
+                $income = $income->plus($annual);
+                if ($annual->isPositive()) {
+                    $parts[] = ['label' => $name, 'monthly' => $annual->dividedBy(12)];
+                }
+            }
+            $total = $income->minus($y->totalTax)->dividedBy(12);
+            $bands = array_reduce($parts, fn (Money $sum, array $p): Money => $sum->plus($p['monthly']), Money::zero());
+            $parts[] = ['label' => 'Less tax', 'monthly' => $total->minus($bands)];
+
+            return ['stage' => $label, 'year' => $y->calendarYear, 'ages' => implode(' / ', $y->ages), 'total' => $total, 'parts' => $parts];
+        }, self::lifeStages($household, $forecast));
+    }
+
+    /**
+     * The "income and spending" page: at each life stage, every income source by name a month,
+     * the tax, the money left to spend, and what the plan spends from it. Regular income (paid
+     * whatever the markets do) is split from money drawn out of pots and savings, so a reader
+     * sees what they live on and what they eat into.
+     *
+     * Sources are the rows, stages the columns. A source shows only if it pays at some stage.
+     * "Less tax" absorbs the monthly rounding, so each column adds up to its "to spend" figure.
+     *
+     * @return array{stages: list<array{stage: string, year: int, ages: string}>, regular: list<array{label: string, monthly: list<Money>}>, drawn: list<array{label: string, monthly: list<Money>}>, tax: list<Money>, toSpend: list<Money>, spend: list<Money>, essentials: list<Money>, leftOver: list<Money>, couldSpend: list<Money|null>|null}
+     */
+    public static function incomeAndSpending(Household $household, ForecastResult $forecast, ?ForecastResult $atSafeSpend = null): array
+    {
+        $safeByYear = [];
+        foreach ($atSafeSpend?->years ?? [] as $y) {
+            $safeByYear[$y->calendarYear] = $y->spendTarget->dividedBy(12);
+        }
+        $stages = self::lifeStages($household, $forecast);
+        $years = array_column($stages, 1);
+        $drawnSources = ['pension_lump_sum', 'pension_drawdown', 'inherited_pension', 'asset_drawdown'];
+        $rows = ['regular' => [], 'drawn' => []];
+        foreach (YearResult::INCOME_SOURCES as $source) {
+            $monthly = array_map(fn (YearResult $y): Money => ($y->incomeBySource[$source] ?? Money::zero())->dividedBy(12), $years);
+            if (array_filter($monthly, fn (Money $m): bool => $m->isPositive()) !== []) {
+                $rows[in_array($source, $drawnSources, true) ? 'drawn' : 'regular'][] = ['label' => self::SOURCE_LABELS[$source], 'monthly' => $monthly];
+            }
+        }
+
+        $toSpend = $tax = $spend = $essentials = $leftOver = [];
+        foreach ($years as $i => $y) {
+            $income = Money::zero();
+            foreach (YearResult::INCOME_SOURCES as $source) {
+                $income = $income->plus($y->incomeBySource[$source] ?? Money::zero());
+            }
+            $toSpend[$i] = $income->minus($y->totalTax)->dividedBy(12);
+            $parts = Money::zero();
+            foreach ([...$rows['regular'], ...$rows['drawn']] as $row) {
+                $parts = $parts->plus($row['monthly'][$i]);
+            }
+            $tax[$i] = $parts->minus($toSpend[$i]);
+            $spend[$i] = $y->spendTarget->dividedBy(12);
+            $essentials[$i] = Money::min($y->essentialSpend, $y->spendTarget)->dividedBy(12);
+            $leftOver[$i] = $toSpend[$i]->minus($spend[$i]);
+        }
+
+        return [
+            'stages' => array_map(fn (array $s): array => ['stage' => $s[0], 'year' => $s[1]->calendarYear, 'ages' => implode(' / ', $s[1]->ages)], $stages),
+            'regular' => $rows['regular'],
+            'drawn' => $rows['drawn'],
+            'tax' => $tax,
+            'toSpend' => $toSpend,
+            'spend' => $spend,
+            'essentials' => $essentials,
+            'leftOver' => $leftOver,
+            // The whole budget the plan could carry at each stage, from a forecast run at the safe
+            // extra spend; null where no such forecast was given.
+            'couldSpend' => $atSafeSpend === null ? null : array_map(fn (YearResult $y): ?Money => $safeByYear[$y->calendarYear] ?? null, $years),
+        ];
+    }
+
+    /**
+     * Up to three years that stand for the household's life stages: now; once everyone has
+     * retired and started their State Pension; and, for a couple, the first year after a death.
+     *
+     * @return list<array{0: string, 1: YearResult}>
+     */
+    private static function lifeStages(Household $household, ForecastResult $forecast): array
+    {
         if ($forecast->years === []) {
             return [];
         }
@@ -2060,26 +2150,7 @@ final class ResultPresenter
             }
         }
 
-        return array_map(function (array $stage): array {
-            [$label, $y] = $stage;
-            $parts = [];
-            $income = Money::zero();
-            foreach (self::incomeBands() as [$name, $sources]) {
-                $annual = Money::zero();
-                foreach ($sources as $source) {
-                    $annual = $annual->plus($y->incomeBySource[$source] ?? Money::zero());
-                }
-                $income = $income->plus($annual);
-                if ($annual->isPositive()) {
-                    $parts[] = ['label' => $name, 'monthly' => $annual->dividedBy(12)];
-                }
-            }
-            $total = $income->minus($y->totalTax)->dividedBy(12);
-            $bands = array_reduce($parts, fn (Money $sum, array $p): Money => $sum->plus($p['monthly']), Money::zero());
-            $parts[] = ['label' => 'Less tax', 'monthly' => $total->minus($bands)];
-
-            return ['stage' => $label, 'year' => $y->calendarYear, 'ages' => implode(' / ', $y->ages), 'total' => $total, 'parts' => $parts];
-        }, $stages);
+        return $stages;
     }
 
     /**
