@@ -391,6 +391,16 @@ not shifted.
    pensionable service before 6 April 2005 and 2.5% for service after it (Pensions Act 1995 s.51,
    as amended by Pensions Act 2004 s.278), and it is a floor as well as a cap, so a capped pension
    is not cut when prices fall.
+   **A plain CPI- or RPI-linked pension is frozen when prices fall, never cut** (board card 0170,
+   so a capped pension can never pay more than the same scheme on plain CPI). In the 12 months to
+   September 2015 CPI was -0.1%, and public service pensions in payment were frozen from April
+   2016, with no Pensions Increase (Review) Order that year. Sources:
+   <https://pensions.gov.scot/sites/default/files/2019-04/NHS%20-%20Circular%20Indexation%20CARE%20Feb%202016.pdf>
+   and <https://bsol.pensions.gov.scot/sites/default/files/2019-06/LGPS%20Circular%20-%20%20Public%20Service%20Pension%20Indexation%20and%20CARE%20Scheme%20revaluation%20Mar%202016.pdf>.
+   Pensions Act 1995 s.51(2) only says a pension "must be increased annually by at least" a
+   percentage, and nothing in it allows a cut: <https://www.legislation.gov.uk/ukpga/1995/26/section/51>.
+   verified_on: 2026-10-23. The floor sits in `PensionEscalationBasis::increase()`, which serves
+   revaluation in deferment too, so a deferred pension is also not revalued downwards.
    The two figures beside them were sourced by board card 0095:
    - **RPI escalates at CPI + 0.39%** (`PensionEscalationBasis::RPI_OVER_CPI_WEDGE_BPS` = 39). This
      is the OBR's long-run RPI-minus-CPI gap: long-run RPI 2.3855% against CPI 2.0%, "in line with

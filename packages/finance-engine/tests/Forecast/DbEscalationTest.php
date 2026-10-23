@@ -294,6 +294,23 @@ final class DbEscalationTest extends TestCase
     }
 
     /**
+     * Card 0170. A CPI- or RPI-linked pension in payment is frozen when prices fall, never cut
+     * (ASSUMPTIONS §18: the April 2016 freeze after CPI of -0.1%). Before the floor, a 2% deflation
+     * path cut a plain-CPI pension while the 5%-capped one stood still, so the cap paid more.
+     */
+    public function test_a_deflation_year_does_not_put_a_capped_db_pension_above_plain_cpi(): void
+    {
+        $accrued = Money::fromPounds(self::ACCRUED)->pence;
+        $cpi = $this->dbIncomeByYear(PensionEscalationBasis::Cpi, -2.0);
+        $rpi = $this->dbIncomeByYear(PensionEscalationBasis::Rpi, -2.0);
+        $cappedAt5 = $this->dbIncomeByYear(PensionEscalationBasis::CpiCappedAt5, -2.0);
+
+        $this->assertSame($accrued, $cpi[2046], 'a CPI pension is frozen in deflation, not cut');
+        $this->assertSame($accrued, $rpi[2046], 'so is an RPI pension, even with its wedge');
+        $this->assertLessThanOrEqual($cpi[2046], $cappedAt5[2046], 'a 5% cap never pays more than plain CPI');
+    }
+
+    /**
      * A scheme that grants a fixed increase uses the rate the READER entered, not the engine's
      * disclosed default — otherwise the new input would be as dead as the dropdown was.
      */

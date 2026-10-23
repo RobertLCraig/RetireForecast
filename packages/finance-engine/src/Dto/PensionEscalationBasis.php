@@ -14,7 +14,8 @@ namespace RetireForecast\FinanceEngine\Dto;
  * "limited price indexation" ladder: 5% for pensionable service before 6 April 2005
  * and 2.5% for service after it (Pensions Act 1995 s.51 as amended by Pensions Act
  * 2004 s.278). LPI is a floor as well as a cap — a scheme does not cut a pension in
- * payment when prices fall — so a capped basis never returns a negative increase.
+ * payment when prices fall — so a capped basis never returns a negative increase. Plain CPI and
+ * RPI are floored the same way (card 0170).
  */
 enum PensionEscalationBasis: string
 {
@@ -87,8 +88,10 @@ enum PensionEscalationBasis: string
     {
         return match ($this) {
             self::None => 0.0,
-            self::Cpi => $inflation,
-            self::Rpi => $inflation + self::RPI_OVER_CPI_WEDGE_BPS / 10_000,
+            // Floored: a CPI- or RPI-linked pension is frozen when prices fall, never cut (card 0170,
+            // ASSUMPTIONS §18: public service pensions were frozen from April 2016 after CPI of -0.1%).
+            self::Cpi => max(0.0, $inflation),
+            self::Rpi => max(0.0, $inflation + self::RPI_OVER_CPI_WEDGE_BPS / 10_000),
             self::Fixed => $fixedRate,
             // Capped AND floored: a scheme does not cut a pension in payment when prices fall.
             self::CpiCappedAt5, self::CpiCappedAt2_5 => max(0.0, min($inflation, (float) $this->capBasisPoints() / 10_000)),

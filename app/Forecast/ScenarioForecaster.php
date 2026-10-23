@@ -61,7 +61,10 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-21 (let-out-and-rent-pays-a-tenancy-deposit): a "Let out & rent elsewhere"
+     * Bumped 2026-10-23 (cpi-db-pension-frozen-in-deflation): a CPI- or RPI-linked DB pension is
+     * frozen, not cut, in a year prices fall. Only Monte Carlo runs with such a pension and a
+     * deflation draw move. Card 0170.
+     * Previous bump 2026-10-21 (let-out-and-rent-pays-a-tenancy-deposit): a "Let out & rent elsewhere"
      * plan is charged the tenancy deposit in year 0, as a sell-and-rent plan is. Only let-out-and-rent
      * plans move. Card 0165.
      * Previous bump 2026-10-21 (spend-levers-keep-the-spending-guardrail): the essential and discretionary
@@ -664,7 +667,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/thresholds-index-from-2031-32';
+    public const ENGINE_VERSION = 'finance-engine/cpi-db-pension-frozen-in-deflation';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

@@ -3,6 +3,20 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-23: a CPI- or RPI-linked DB pension is frozen in deflation
+
+**Context:** card 0170. `PensionEscalationBasis::increase()` floored the two capped bases at zero
+but not plain CPI or RPI, so a Monte Carlo deflation draw cut a CPI pension while a 5%-capped one
+stood still, and the cap paid more.
+
+**Decision:** floor `Cpi` and `Rpi` at zero too. UK practice is a freeze: public service pensions
+were frozen from April 2016 after CPI of -0.1%, and Pensions Act 1995 s.51(2) allows no cut. The
+floor also serves revaluation in deferment. Sources in ASSUMPTIONS §18. `ENGINE_VERSION` is
+`finance-engine/cpi-db-pension-frozen-in-deflation`; only Monte Carlo runs with a CPI or RPI DB
+pension and a deflation draw move. The golden master did not move, so it was not re-pinned.
+
+**Status:** active
+
 ## 2026-10-22: the threshold freeze's last year is 2030-31
 
 **Context:** card 0214. `ForecastSettings::$freezeEndYear` is the last frozen year, and a year is the
