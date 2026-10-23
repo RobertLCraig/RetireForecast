@@ -12,8 +12,9 @@ use RetireForecast\FinanceEngine\Money\Percent;
 use RetireForecast\FinanceEngine\Property\AmortisationSchedule;
 
 /**
- * Worked example: a real European Standardised Information Sheet (ESIS) — LiveMore Capital
- * "Livemore 1 - (577) Standard Mortgage C&I 5 Years Fixed", quoted 29 July 2026.
+ * Worked example: a real lender's European Standardised Information Sheet (ESIS), a 5-year
+ * fixed repayment mortgage. The lender and product are in the gitignored
+ * docs/HOUSING-OFFERS.local.md.
  *
  *   £160,000 over 16 years (192 monthly payments), first payment September 2026
  *   6.23% fixed for 60 months  -> £1,318.54 a month

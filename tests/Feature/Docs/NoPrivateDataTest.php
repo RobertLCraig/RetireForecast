@@ -87,10 +87,10 @@ final class NoPrivateDataTest extends TestCase
         return $hits;
     }
 
-    /** @return list<string> tracked paths under docs/ and tests/ */
+    /** @return list<string> tracked paths under docs/, tests/ and the engine's tests/ */
     private function trackedFiles(): array
     {
-        exec('git -C '.escapeshellarg(base_path()).' ls-files -- docs tests', $files, $status);
+        exec('git -C '.escapeshellarg(base_path()).' ls-files -- docs tests packages/finance-engine/tests', $files, $status);
         $this->assertSame(0, $status, 'git ls-files failed, so the private-data guard could not see the tracked files.');
         $this->assertNotEmpty($files, 'git ls-files listed no tracked docs or tests.');
 
