@@ -61,7 +61,10 @@ final class ScenarioForecaster
 
     /**
      * A stamp recorded on each run so any stored result is auditable back to its inputs.
-     * Bumped 2026-10-23 (cpi-db-pension-frozen-in-deflation): a CPI- or RPI-linked DB pension is
+     * Bumped 2026-10-23 (income-stream-ends-on-the-birthday): an income stream with an end age is
+     * paid until the birthday one past it, so the year that birthday falls in pays the months before
+     * it. Only plans with an income stream end age move. Card 0172.
+     * Previous bump 2026-10-23 (cpi-db-pension-frozen-in-deflation): a CPI- or RPI-linked DB pension is
      * frozen, not cut, in a year prices fall. Only Monte Carlo runs with such a pension and a
      * deflation draw move. Card 0170.
      * Previous bump 2026-10-21 (let-out-and-rent-pays-a-tenancy-deposit): a "Let out & rent elsewhere"
@@ -667,7 +670,7 @@ final class ScenarioForecaster
      * mortgage (home EQUITY, NNEG-floored) — wealth figures stored under the phase-3 stamp
      * are gross-property and not comparable.
      */
-    public const ENGINE_VERSION = 'finance-engine/cpi-db-pension-frozen-in-deflation';
+    public const ENGINE_VERSION = 'finance-engine/income-stream-ends-on-the-birthday';
 
     /**
      * The draw order a scenario is forecast under where the reader has not chosen one. Read from

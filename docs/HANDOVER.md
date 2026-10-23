@@ -15,9 +15,12 @@ Rob's call on card 0151:_
   date: re-run it" box (card 0219), so every stored result shows it until the re-run below.
   A Welsh home is refused with a reason (card 0215).
 
-- **A CPI- or RPI-linked DB pension is frozen, not cut, in deflation.** Card 0170. `ENGINE_VERSION`
-  is `finance-engine/cpi-db-pension-frozen-in-deflation`; the **re-run is owed** for Monte Carlo
-  plans with such a pension.
+- **An income stream with an end age stops on the birthday after it, not on 1 January.** Card 0172.
+  `ENGINE_VERSION` is `finance-engine/income-stream-ends-on-the-birthday`; the **re-run is owed**
+  for plans with an income stream end age.
+
+- **A CPI- or RPI-linked DB pension is frozen, not cut, in deflation.** Card 0170. The **re-run is
+  owed** for Monte Carlo plans with such a pension.
 
 - **Tax thresholds index from 2031-32, not 2032-33.** Card 0214. `ENGINE_VERSION` is
   `finance-engine/thresholds-index-from-2031-32`; the **re-run is owed** for every plan past 2030.

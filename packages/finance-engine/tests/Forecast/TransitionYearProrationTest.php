@@ -18,8 +18,10 @@ use RetireForecast\FinanceEngine\Dto\Household;
 use RetireForecast\FinanceEngine\Dto\IncomeStream;
 use RetireForecast\FinanceEngine\Dto\IncomeStreamType;
 use RetireForecast\FinanceEngine\Dto\LongevityAdjustment;
+use RetireForecast\FinanceEngine\Dto\OwnershipType;
 use RetireForecast\FinanceEngine\Dto\PensionEscalationBasis;
 use RetireForecast\FinanceEngine\Dto\Person;
+use RetireForecast\FinanceEngine\Dto\Property;
 use RetireForecast\FinanceEngine\Dto\Sex;
 use RetireForecast\FinanceEngine\Dto\StatePensionEntitlement;
 use RetireForecast\FinanceEngine\Forecast\DeterministicForecaster;
@@ -171,7 +173,7 @@ final class TransitionYearProrationTest extends TestCase
      * @param  list<IncomeStream>  $streams
      * @return array<int, int> calendarYear => other_taxable pence
      */
-    private function otherTaxableByYear(string $dob, ?AnnuityPurchase $annuity = null, array $streams = []): array
+    private function otherTaxableByYear(string $dob, ?AnnuityPurchase $annuity = null, array $streams = [], ?Property $home = null): array
     {
         $household = new Household(
             'Annuity and stream transition',
@@ -184,6 +186,7 @@ final class TransitionYearProrationTest extends TestCase
                 new Account('p1', AccountType::Cash, Money::fromPounds(100_000), annuityPurchase: $annuity),
             ],
             incomeStreams: $streams,
+            primaryResidence: $home,
         );
 
         $byYear = [];
@@ -237,6 +240,47 @@ final class TransitionYearProrationTest extends TestCase
         ]);
 
         $this->assertSame(1_200_000, $income[2026]);
+    }
+
+    public function test_income_stream_is_prorated_in_the_year_it_ends(): void
+    {
+        // An end age is inclusive: a stream "to age 69" is paid while the person is 69, so it stops
+        // on the 70th birthday, in 2035, and pays the months before it (board card 0172). Before,
+        // it stopped on 1 January 2035, and with the start year a part year since card 0036 the
+        // stream paid birthMonth / 12 of a year too little over its life.
+        foreach (self::BIRTH_MONTHS as $month => $dob) {
+            $income = $this->otherTaxableByYear($dob, streams: [
+                new IncomeStream('p1', IncomeStreamType::Other, Money::fromPounds(12_000), taxable: true, inflationLinked: false, startAge: 60, endAge: 69),
+            ]);
+
+            $this->assertSame(1_200_000, $income[2034], "month $month: a whole year is paid while the person is 69");
+            $this->assertSame(
+                (int) round(1_200_000 * $month / 12),
+                $income[2035],
+                "month $month: only the part of 2035 before the 70th birthday is paid",
+            );
+            $this->assertSame(0, $income[2036], "month $month: nothing is paid after the end age");
+        }
+    }
+
+    public function test_a_let_homes_rent_and_its_letting_costs_end_on_the_same_birthday(): void
+    {
+        // The rent banked and the rent the letting costs are taken off must be one figure in the
+        // end year too, or the costs of a whole year come off a part year of rent.
+        $home = new Property(
+            currentValue: Money::fromPounds(300_000), ownership: OwnershipType::Outright, isLet: true,
+            lettingManagementRate: Percent::fromPercent(10), lettingVoidRate: Percent::zero(), lettingMaintenanceRate: Percent::zero(),
+        );
+        foreach (self::BIRTH_MONTHS as $month => $dob) {
+            $income = $this->otherTaxableByYear($dob, streams: [
+                new IncomeStream('p1', IncomeStreamType::Rental, Money::fromPounds(12_000), taxable: true, inflationLinked: false, startAge: 60, endAge: 69),
+            ], home: $home);
+
+            $rent = (int) round(1_200_000 * $month / 12);
+            $this->assertSame(1_080_000, $income[2034], "month $month: a whole year of rent less 10% while the person is 69");
+            $this->assertSame($rent - (int) round($rent * 0.10), $income[2035], "month $month: the part year of rent carries only its own letting costs");
+            $this->assertSame(0, $income[2036], "month $month: no rent after the end age");
+        }
     }
 
     /**

@@ -3,6 +3,21 @@
 Append-only log of decisions and their rationale, newest first. Do not rewrite history;
 supersede an old entry with a new one that links back to it.
 
+## 2026-10-23: an income stream's end age is inclusive
+
+**Context:** card 0172. A stream paid nothing from 1 January of the year its owner turned one past
+the end age. Card 0036 had made the start year a part year, so a stream with an end age paid
+birthMonth / 12 of a year too little over its life.
+
+**Decision:** the end age is the last age paid, so the stream stops on the next birthday and that
+year pays birthMonth / 12, the `workFraction` split. The evidence: `IncomeStream` says "active
+between `startAge` and `endAge`", and the builder accepts an end age equal to the start age, which
+only makes sense if that age is paid. `rentalIncomePerOwner` reads the same fraction, so the letting
+costs come off the same rent. `ENGINE_VERSION` is `finance-engine/income-stream-ends-on-the-birthday`;
+only plans with an income stream end age move.
+
+**Status:** active
+
 ## 2026-10-23: a CPI- or RPI-linked DB pension is frozen in deflation
 
 **Context:** card 0170. `PensionEscalationBasis::increase()` floored the two capped bases at zero

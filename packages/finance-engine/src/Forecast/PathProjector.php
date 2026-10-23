@@ -2990,27 +2990,39 @@ final class PathProjector
             if ($stream->ownerId !== $person->id || $stream->taxable !== $taxable || ($only !== null && $stream->type !== $only)) {
                 continue;
             }
-            if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
+            $fraction = self::streamYearFraction($stream, $person, $age, $yearIndex);
+            if ($fraction <= 0.0) {
                 continue;
             }
             $total += (int) round(($stream->inflationLinked ? $stream->grossAnnual->pence * $cumInflation : $stream->grossAnnual->pence)
-                * self::streamStartFraction($stream, $person, $age, $yearIndex));
+                * $fraction);
         }
 
         return $total;
     }
 
     /**
-     * The share of this year an income stream pays. The year it starts is a part year, because it
-     * starts on the birthday the start age is reached ({@see startFraction}), EXCEPT in the base
-     * year: a start age already reached then reads as "now" on the results page, an income already
-     * being received, so it pays the whole year.
+     * The share of this year an income stream pays, zero outside its age window. The year it starts
+     * is a part year, because it starts on the birthday the start age is reached ({@see startFraction}),
+     * EXCEPT in the base year: a start age already reached then reads as "now" on the results page,
+     * an income already being received, so it pays the whole year.
+     *
+     * The end age is inclusive: the stream is paid while the person is that age and stops on the
+     * next birthday, so the year they turn one past it pays the months before that birthday, by
+     * {@see workFraction}'s split (board card 0172). Start and end part years then sum to exactly
+     * the years of age the window names.
      */
-    private static function streamStartFraction(IncomeStream $stream, Person $person, int $age, int $yearIndex): float
+    private static function streamYearFraction(IncomeStream $stream, Person $person, int $age, int $yearIndex): float
     {
-        return $age === $stream->startAge && $yearIndex > 0
-            ? self::startFraction((int) $person->dob->format('n'))
-            : 1.0;
+        $month = (int) $person->dob->format('n');
+
+        return match (true) {
+            $age < $stream->startAge => 0.0,
+            $stream->endAge !== null && $age > $stream->endAge + 1 => 0.0,
+            $stream->endAge !== null && $age === $stream->endAge + 1 => $month / 12.0,
+            $age === $stream->startAge && $yearIndex > 0 => self::startFraction($month),
+            default => 1.0,
+        };
     }
 
     /**
@@ -3032,15 +3044,15 @@ final class PathProjector
             if ($stream->type !== IncomeStreamType::Rental || ! $stream->taxable || $owner === null || ! ($alive[$stream->ownerId] ?? false)) {
                 continue;
             }
-            $age = $ages[$stream->ownerId] ?? 0;
-            if ($age < $stream->startAge || ($stream->endAge !== null && $age > $stream->endAge)) {
+            // The same age window and part-year rule as incomeStreamsNominal, so the rent banked and
+            // the rent the letting costs are taken off can never disagree.
+            $fraction = self::streamYearFraction($stream, $owner, $ages[$stream->ownerId] ?? 0, $yearIndex);
+            if ($fraction <= 0.0) {
                 continue;
             }
-            // The same part-year rule as incomeStreamsNominal, so the rent banked and the rent the
-            // letting costs are taken off can never disagree.
             $gross[$stream->ownerId] = ($gross[$stream->ownerId] ?? 0) + (int) round(
                 ($stream->inflationLinked ? $stream->grossAnnual->pence * $cumInflation : $stream->grossAnnual->pence)
-                * self::streamStartFraction($stream, $owner, $age, $yearIndex));
+                * $fraction);
         }
 
         return $gross;
