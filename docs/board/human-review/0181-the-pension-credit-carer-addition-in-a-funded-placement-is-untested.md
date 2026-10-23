@@ -3,6 +3,10 @@ no_outward_effect: "published" is the government's own rule, read and cited; not
 ---
 # The Pension Credit carer addition in a funded care placement has no test and no source
 
+## What I need from you
+
+The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
 ## Why
 Card 0050 stopped the disability care component in a care placement the local authority funds.
 While building it, `PathProjector::pensionCreditAward()` was also changed to drop the Pension Credit
@@ -61,3 +65,5 @@ OUT-OF-SCOPE: 0226
 Second take. WebSearch and WebFetch were both refused in this unattended session, so the published rule could not be read. Nothing new was built.
 The first take's work stands: test_the_carer_addition_stops_when_the_cared_for_partner_is_in_a_funded_placement still passes, and ASSUMPTIONS section 25 records the carer rule as STATED, not verified.
 Both criteria need the source (SPC Regs 2002 Sch I Part II, and when Carer's Allowance stops after the cared-for person's AA/DLA care stops in a funded placement). Only a session with web access can finish this card, best together with 0118. Another unattended take will block the same way.
+
+**2026-10-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 2 of 2 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
