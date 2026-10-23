@@ -25,10 +25,27 @@ The start side. Card 0036 owns it and it is built.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN an income stream has an end age, THE APP SHALL pay it, in the year the person turns one past that age, the months up to that birthday, by the same `workFraction` split salary uses.
+- [x] #1 WHEN an income stream has an end age, THE APP SHALL pay it, in the year the person turns one past that age, the months up to that birthday, by the same `workFraction` split salary uses.
 <!-- AC:END -->
 
 ## Tasks
 - [ ] Settle first whether `endAge` is inclusive (paid through the year of that age) or is the birthday the income stops on. The builder label and `IncomeStream`'s docblock are the evidence.
 - [ ] Apply the end fraction in `incomeStreamsNominal` and `rentalIncomePerOwner`
 - [ ] A test with a birthday in each quarter
+
+## Comments
+
+**2026-10-23** RESULT: done
+TESTS: +2 new, all green
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/tests/Forecast/TransitionYearProrationTest.php
+app/Forecast/ScenarioForecaster.php
+docs/DECISIONS.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Settled endAge as inclusive (IncomeStream docblock says 'active between startAge and endAge'; the builder accepts end == start). DECISIONS 2026-10-23.
+streamStartFraction became streamYearFraction, the one home of the age window and both part years; incomeStreamsNominal and rentalIncomePerOwner both read it. The year the owner turns endAge+1 pays birthMonth/12.
+Tests: test_income_stream_is_prorated_in_the_year_it_ends and test_a_let_homes_rent_and_its_letting_costs_end_on_the_same_birthday, birthdays in Feb/May/Aug/Nov. Both watched red first (end year paid 0); the rent test was also watched red with only incomeStreamsNominal fixed (part rent, no letting costs).
+ENGINE_VERSION bumped to finance-engine/income-stream-ends-on-the-birthday: the re-run is owed for plans with an income stream end age. Golden master did not move.
+No screen changed. The results page's 'age N (year)' end label still reads right as the last age paid. No browser check was done from the worktree.
