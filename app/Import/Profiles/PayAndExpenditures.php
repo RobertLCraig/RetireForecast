@@ -167,7 +167,7 @@ final class PayAndExpenditures implements ImportProfile
 
     /**
      * The income block above the deductions header: a State Pension row maps to a state
-     * pension, DLA to tax-free income, and any other income (incl. a pension named in a
+     * pension, DLA or Attendance Allowance to tax-free income, and any other income (incl. a pension named in a
      * later column) to an income stream. Owner is Person 1 and no start age is set — both
      * are flagged for the user, since the sheet does not carry ages or split the people.
      *
@@ -194,7 +194,9 @@ final class PayAndExpenditures implements ImportProfile
                     // A disability award is two components the care means test treats apart
                     // (board card 0050): a row naming mobility is that one, any other is read as
                     // the care component, the adverse reading on both sides of the assessment.
-                    $taxable = ! str_contains($label, 'dla') && ! str_contains($label, 'disability');
+                    // Attendance Allowance is treated like the care component (card 0182).
+                    $taxable = ! str_contains($label, 'dla') && ! str_contains($label, 'disability')
+                        && ! str_contains($label, 'attendance');
                     $type = match (true) {
                         $taxable => 'other',
                         str_contains($label, 'mobility') => IncomeStreamType::DisabilityBenefitMobility->value,

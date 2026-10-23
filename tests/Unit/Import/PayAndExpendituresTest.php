@@ -99,6 +99,20 @@ class PayAndExpendituresTest extends TestCase
         $this->assertFalse($result->incomeStreams[1]['taxable']);
     }
 
+    /**
+     * Board card 0182. Attendance Allowance is tax-free and the care means test treats it like
+     * the DLA care component, but its label names neither "dla" nor "disability".
+     */
+    public function test_an_imported_attendance_allowance_row_is_a_tax_free_care_component(): void
+    {
+        $result = (new PayAndExpenditures)->parse($this->workbook([
+            ['Person Attendance Allowance', '3800', '316'],
+        ]));
+
+        $this->assertSame('disability_benefit', $result->incomeStreams[1]['type']);
+        $this->assertFalse($result->incomeStreams[1]['taxable']);
+    }
+
     public function test_it_names_the_tab_it_used(): void
     {
         $result = (new PayAndExpenditures)->parse($this->workbook());
