@@ -24,7 +24,7 @@ is added.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN a year's inflation is negative, THE APP SHALL not pay a CPI- or RPI-escalated DB pension more or less than the sourced rule allows, and a 5%-capped pension SHALL never pay more than the same scheme on plain CPI. proves: `test_a_deflation_year_does_not_put_a_capped_db_pension_above_plain_cpi`
+- [x] #1 WHEN a year's inflation is negative, THE APP SHALL not pay a CPI- or RPI-escalated DB pension more or less than the sourced rule allows, and a 5%-capped pension SHALL never pay more than the same scheme on plain CPI. proves: `test_a_deflation_year_does_not_put_a_capped_db_pension_above_plain_cpi`
 <!-- AC:END -->
 
 ## Plan
@@ -76,3 +76,17 @@ WHY: Both takes stopped only because they had no web to find the rule; the rule 
 
 OUTCOME: reopen
 
+**2026-10-23** RESULT: done
+TESTS: +1 new, all green
+TOUCHED: packages/finance-engine/src/Dto/PensionEscalationBasis.php
+TOUCHED: packages/finance-engine/tests/Forecast/DbEscalationTest.php
+TOUCHED: docs/spec/ASSUMPTIONS.md
+TOUCHED: app/Forecast/ScenarioForecaster.php
+TOUCHED: docs/DECISIONS.md
+TOUCHED: docs/HANDOVER.md
+OUT-OF-SCOPE: none
+Watched test_a_deflation_year_does_not_put_a_capped_db_pension_above_plain_cpi fail first: at -2% CPI the plain-CPI pension fell to 1335216p against an accrued 2000000p. It also asserts an RPI pension is frozen and the 5%-capped one is not above plain CPI.
+Fix: max(0.0, ...) on Cpi and Rpi in PensionEscalationBasis::increase(). The rule and the manager's URLs are in ASSUMPTIONS §18, verified_on 2026-10-23.
+The floor also applies to revaluation in deferment, because increase() serves both phases. I read the sourced freeze as covering that; noted in §18.
+GoldenMasterTest stayed green (its frozen run has no CPI DB pension in a deflation year), so I did not re-pin. ENGINE_VERSION bumped to finance-engine/cpi-db-pension-frozen-in-deflation; DECISIONS 2026-10-23 entry added. The Monte Carlo re-run is owed for plans with such a pension.
+No screen changed, so no browser check is needed.
