@@ -47,3 +47,19 @@ Built: councilTaxNominal charges nothing when no living member is at home (all i
 Not met, #1: it asks for the exemption 'sourced and dated'. WebFetch was refused in this session, so Class E (SI 1992/558 art. 3, https://www.legislation.gov.uk/uksi/1992/558/article/3) is cited as STATED, not verified, with no verified_on date, the same way ASSUMPTIONS §23 holds the other council tax rules (card 0111). To finish: fetch that page, confirm Class E covers an owner or tenant now resident in a care home, and add verified_on in CouncilTax.php and ASSUMPTIONS §23.
 Assumed: a let-and-rent plan's rented home left empty for care is exempt too (Class E covers tenants).
 HANDOVER.md is at its 40 KB limit, so the 0047 bullet got one short clause only.
+
+**2026-10-23** RESULT: partial
+TESTS: +1 new, all green (php artisan test; no pest.bat here)
+TOUCHED: packages/finance-engine/src/Forecast/PathProjector.php
+packages/finance-engine/src/Benefits/CouncilTax.php
+packages/finance-engine/tests/Forecast/CouncilTaxTest.php
+app/Forecast/ScenarioForecaster.php
+docs/spec/ASSUMPTIONS.md
+docs/HANDOVER.md
+OUT-OF-SCOPE: none
+
+Built (commit b1336fcf, the first take): councilTaxNominal charges nothing when no living member is at home (all in permanent care, home unsold); the fallback to the living count is gone at both call sites. test_a_home_left_empty_for_care_is_exempt_from_council_tax was watched failing first (200000 charged, 0 expected), for a couple and a lone member. ENGINE_VERSION is finance-engine/empty-home-in-care-pays-no-council-tax; the re-run is owed for plans where every living member reaches care.
+Second take re-ran the full suite (green) and pint (clean), and changed no file.
+Not met, #1: it asks for the exemption 'sourced and dated'. WebFetch was refused again in this session, so Class E (SI 1992/558 art. 3, https://www.legislation.gov.uk/uksi/1992/558/article/3) stays STATED, not verified, with no verified_on date. To finish, in a session with web: fetch that page, confirm Class E covers an owner or tenant now resident in a care home, and add verified_on in CouncilTax.php and ASSUMPTIONS §23. This is the only thing left; a loop session cannot do it.
+Assumed: a let-and-rent plan's rented home left empty for care is exempt too (Class E covers tenants).
+Still needs a browser check (Herd serves C:\Dev\RetireForecast, not this worktree).
