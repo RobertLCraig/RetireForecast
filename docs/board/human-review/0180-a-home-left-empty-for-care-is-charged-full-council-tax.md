@@ -69,3 +69,23 @@ Assumed: a let-and-rent plan's rented home left empty for care is exempt too (Cl
 Still needs a browser check (Herd serves C:\Dev\RetireForecast, not this worktree).
 
 **2026-10-23** The loop moved this card from in-progress/ to human-review/. 2 takes in a row ended with it still in in-progress/, and the last one said: `made no progress: 1 of 1 still open, exactly as this take found it`. What this card is waiting for is not another session. bin/work-card.ps1 counts those takes out of storage/logs/work-card.log, and will start it again as soon as a person has moved it back to todo/.
+
+### 2026-10-23 manager (m20261023174912-ba17)
+
+**outcome: rob**
+
+The code and the test are done, and the only thing left is a web check that the unattended loop cannot do.
+
+**what the session said**
+
+The code work is done. The one open item is a web check, and the build loop has no web access. If I send the card back to the loop, it will park the card again.
+
+- **Checked:** `CouncilTax.php` (the docblock above `PathProjector::councilTaxNominal`) cites Class E, SI 1992/558 art. 3. It says the citation was not fetched and has no `verified_on` date.
+- **Checked:** the test `test_a_home_left_empty_for_care_is_exempt_from_council_tax` is in `packages/finance-engine/tests/Forecast/CouncilTaxTest.php`.
+- **Still open:** #1 asks for the exemption to be "sourced and dated". The builder tried twice. Both times the session refused WebFetch, so the builder could not do it.
+- **What you do:** in a session that has web access, open https://www.legislation.gov.uk/uksi/1992/558/article/3. Confirm that Class E covers an owner or a tenant who now lives in a care home. Then add a `verified_on` date in two places: `CouncilTax.php` and `docs/spec/ASSUMPTIONS.md` §23.
+
+WHY: The code and the test are done, and the only thing left is a web check that the unattended loop cannot do.
+
+OUTCOME: rob
+
