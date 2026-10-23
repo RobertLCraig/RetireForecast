@@ -384,6 +384,7 @@ final class PathProjector
             // A cohabiting partner can be nominated too: settleEstates hands them the pot unless it
             // is nominated to somebody else, so the nomination, not the marriage, decides whether it leaves.
             partnerSurvives: $survivor !== null,
+            realFactor: 1.0 / $cumInflation,
         );
 
         // The band this death CONSUMED, kept in NOMINAL pounds because that is the unit the frozen
@@ -495,6 +496,7 @@ final class PathProjector
                 $nilRateBandUsedAtFirstDeath,
                 $deathAge >= InheritanceTaxCalculator::BENEFICIARY_TAXED_FROM_AGE,
                 $beneficiaryMarginalRate,
+                1.0 / $cumInflation,
             ),
             1.0 / $cumInflation,
         );
@@ -502,8 +504,9 @@ final class PathProjector
 
     /**
      * Deflate an {@see IhtResult} computed in nominal pounds at the death year to real today's
-     * money, scaling each money leg by the real factor (the rate, the pensions-included flag and
-     * the warnings are unit-free and carry through).
+     * money, scaling each money leg by the real factor. The rate and the pensions-included flag are
+     * unit-free and carry through; the warnings carry through because the calculator was handed
+     * the same factor and already wrote their amounts in real money (board card 0183).
      */
     private function deflateIht(IhtResult $result, float $realFactor): IhtResult
     {

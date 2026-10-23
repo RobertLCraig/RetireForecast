@@ -145,6 +145,7 @@ final class InheritanceTaxCalculator
         bool $deceasedDiedAtOrAfter75 = false,
         ?Percent $beneficiaryMarginalRate = null,
         ?bool $partnerSurvives = null,
+        float $realFactor = 1.0,
     ): IhtResult {
         $params = $this->config->iht;
 
@@ -196,8 +197,8 @@ final class InheritanceTaxCalculator
                 .'there are children or other descendants, because you have not told us there are none. '
                 .'Without a will the estate passes under the intestacy rules, and a husband, wife or civil '
                 .'partner does not inherit everything: they take the personal belongings, the first '
-                .Money::fromPence(self::STATUTORY_LEGACY_PENCE)->format().' and half of what is left, and '
-                .'the children take the other half — '.$childrenTake->format().' here. '
+                .$this->statutory(Money::fromPence(self::STATUTORY_LEGACY_PENCE), $realFactor).' and half of what is left, and '
+                .'the children take the other half — '.$this->real($childrenTake, $realFactor).' here. '
                 .'That half is not covered by the spouse exemption, so it is taxed and it uses up part of '
                 .'the allowance that would otherwise have passed to the survivor. Making a will is the one '
                 .'change that undoes this.',
@@ -208,7 +209,7 @@ final class InheritanceTaxCalculator
                 WarningCode::IHT_SPOUSE_EXEMPTION_CAPPED,
                 'You told us the surviving husband, wife or civil partner is not a UK long-term resident, '
                 .'so the amount that can pass to them free of Inheritance Tax is capped at '
-                .$params->nilRateBand->format().' rather than being unlimited. A couple can elect to be '
+                .$this->statutory($params->nilRateBand, $realFactor).' rather than being unlimited. A couple can elect to be '
                 .'treated as if they were UK long-term resident, which removes the cap but brings their '
                 .'worldwide assets into charge; that election is not modelled here.',
             );
@@ -216,7 +217,7 @@ final class InheritanceTaxCalculator
         if ($pensionsInEstate->isPositive()) {
             $warnings[] = new Warning(
                 WarningCode::IHT_PENSIONS_IN_ESTATE,
-                'Unused pension funds of '.$pensionsInEstate->format().' are included in the '
+                'Unused pension funds of '.$this->real($pensionsInEstate, $realFactor).' are included in the '
                 .'estate for Inheritance Tax (the rule due from April 2027), increasing the '
                 .'taxable estate.',
             );
@@ -239,7 +240,7 @@ final class InheritanceTaxCalculator
             $beneficiaryRate,
         );
         if ($beneficiaryIncomeTax->isPositive()) {
-            $warnings[] = $this->beneficiaryIncomeTaxWarning($leavingTheHousehold, $beneficiaryIncomeTax, $beneficiaryRate);
+            $warnings[] = $this->beneficiaryIncomeTaxWarning($leavingTheHousehold, $beneficiaryIncomeTax, $beneficiaryRate, $realFactor);
         }
 
         return new IhtResult(
@@ -289,6 +290,7 @@ final class InheritanceTaxCalculator
         ?Money $nilRateBandUsedAtFirstDeath = null,
         bool $deceasedDiedAtOrAfter75 = false,
         ?Percent $beneficiaryMarginalRate = null,
+        float $realFactor = 1.0,
     ): IhtResult {
         $params = $this->config->iht;
 
@@ -331,7 +333,7 @@ final class InheritanceTaxCalculator
         if ($downsizingAddition->isPositive()) {
             $warnings[] = new Warning(
                 WarningCode::IHT_DOWNSIZING_ADDITION,
-                'A former home was sold during this plan, so '.$downsizingAddition->format().' of the '
+                'A former home was sold during this plan, so '.$this->real($downsizingAddition, $realFactor).' of the '
                 .'residence nil-rate band it would have sheltered is added back (the downsizing '
                 .'addition). Without it, selling the home would throw the band away.',
             );
@@ -339,7 +341,7 @@ final class InheritanceTaxCalculator
         if ($pensionsInEstate->isPositive()) {
             $warnings[] = new Warning(
                 WarningCode::IHT_PENSIONS_IN_ESTATE,
-                'Unused pension funds of '.$pensionsInEstate->format().' are included in the '
+                'Unused pension funds of '.$this->real($pensionsInEstate, $realFactor).' are included in the '
                 .'estate for Inheritance Tax (the rule due from April 2027), increasing the '
                 .'taxable estate.',
             );
@@ -358,7 +360,7 @@ final class InheritanceTaxCalculator
             $beneficiaryRate,
         );
         if ($beneficiaryIncomeTax->isPositive()) {
-            $warnings[] = $this->beneficiaryIncomeTaxWarning($unusedPensionValue, $beneficiaryIncomeTax, $beneficiaryRate);
+            $warnings[] = $this->beneficiaryIncomeTaxWarning($unusedPensionValue, $beneficiaryIncomeTax, $beneficiaryRate, $realFactor);
         }
 
         return new IhtResult(
@@ -409,19 +411,41 @@ final class InheritanceTaxCalculator
         return $potPassing->minus($borneByThePot)->minZero()->applyRate($rate);
     }
 
-    private function beneficiaryIncomeTaxWarning(Money $pot, Money $incomeTax, Percent $rate): Warning
+    private function beneficiaryIncomeTaxWarning(Money $pot, Money $incomeTax, Percent $rate, float $realFactor): Warning
     {
         $pct = rtrim(rtrim(number_format($rate->asPercent(), 2), '0'), '.');
 
         return new Warning(
             WarningCode::IHT_INHERITED_PENSION_INCOME_TAX,
-            'The unused pension of '.$pot->format().' is taxed a SECOND time. Because the member is '
+            'The unused pension of '.$this->real($pot, $realFactor).' is taxed a SECOND time. Because the member is '
             .'modelled as dying at or after '.self::BENEFICIARY_TAXED_FROM_AGE.', whoever inherits it '
             .'pays their own income tax on every pound they take out of it, on top of any Inheritance '
-            ."Tax the estate paid. At an assumed {$pct} that is ".$incomeTax->format().'. Inheritance '
+            ."Tax the estate paid. At an assumed {$pct} that is ".$this->real($incomeTax, $realFactor).'. Inheritance '
             .'Tax and income tax together can take around two thirds of a pot left to a working-age '
             .'child, which is the figure to weigh against spending it.',
         );
+    }
+
+    /**
+     * A warning amount in the money the caller reports in (board card 0183). The figures are
+     * computed in nominal pounds at the death year, but the projector deflates the result to
+     * today's money by $realFactor, so a warning naming the nominal figure would sit beside a
+     * different real one. Rounded as the projector's deflation rounds, so the two strings match.
+     */
+    private function real(Money $amount, float $realFactor): string
+    {
+        return Money::fromPence((int) round($amount->pence * $realFactor))->format();
+    }
+
+    /**
+     * A sum fixed in law is named as the law states it, with its value in today's money beside
+     * it, so the reader can set it against the real figures without being misled about the statute.
+     */
+    private function statutory(Money $amount, float $realFactor): string
+    {
+        return $realFactor === 1.0
+            ? $amount->format()
+            : $amount->format().' ('.$this->real($amount, $realFactor)." in today's money)";
     }
 
     /**
