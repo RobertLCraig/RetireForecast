@@ -114,3 +114,5 @@ WHY: The rest of the card waits on sourced figures from the web, and an unattend
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
