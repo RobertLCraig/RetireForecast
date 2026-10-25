@@ -101,3 +101,5 @@ WHY: The only open criterion needs a web lookup, and the unattended loop cannot 
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
