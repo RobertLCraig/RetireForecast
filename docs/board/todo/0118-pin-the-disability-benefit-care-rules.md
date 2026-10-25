@@ -112,3 +112,5 @@ WHY: The loop cannot reach the web, and this card is only a web lookup, so only 
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
