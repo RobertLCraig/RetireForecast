@@ -38,7 +38,7 @@ The annuity rate itself, which is a user input defaulted from a quote and belong
 ## Acceptance
 <!-- AC:BEGIN -->
 - [ ] THE APP SHALL carry a source URL and a verified_on date for both figures in docs/spec/ASSUMPTIONS.md section 32, or record there that the search found none. proves: manual
-- [ ] WHEN the prescribed expectation-of-life table differs from the engine's own life expectancy, THE APP SHALL use the prescribed one and say so instead of calling the tax an estimate. proves: `test_only_the_interest_element_of_a_purchased_life_annuity_is_taxed`
+- [ ] THE APP SHALL say that the purchased-life-annuity tax uses ONS life expectancy as a stand-in for the prescribed CMI Reports No. 17 Table A11 (SI 2008/562 reg 7(3)), which is not published online, in the `Pension\PurchasedLifeAnnuity` docblock and in the result note. Reworded 2026-10-25 by an attended session: the prescribed table cannot be obtained, see Comments. proves: `test_only_the_interest_element_of_a_purchased_life_annuity_is_taxed`
 <!-- AC:END -->
 
 ## Tasks
@@ -108,3 +108,5 @@ WHY: The work is clear, but only a session with web access can do it, and only a
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
