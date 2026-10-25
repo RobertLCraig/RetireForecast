@@ -95,3 +95,5 @@ WHY: The only thing blocking this card is a figure from the web, and only an att
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
