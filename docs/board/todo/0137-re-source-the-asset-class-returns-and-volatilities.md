@@ -108,3 +108,5 @@ WHY: Every open criterion needs figures fetched from the web, and only an attend
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
