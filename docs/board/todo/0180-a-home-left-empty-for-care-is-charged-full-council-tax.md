@@ -89,3 +89,5 @@ WHY: The code and the test are done, and the only thing left is a web check that
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
