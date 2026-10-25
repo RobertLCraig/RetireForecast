@@ -122,3 +122,5 @@ WHY: This card needs a web lookup, and the unattended loop has no web access, so
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
