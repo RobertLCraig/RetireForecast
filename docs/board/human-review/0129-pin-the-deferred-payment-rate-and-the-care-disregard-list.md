@@ -123,3 +123,10 @@ OUTCOME: rob
 **2026-10-25** **Research, 2026-10-25 (attended session, web)**
 
 **2026-10-25** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+### 2026-10-25 manager (m20261025150907-70a2)
+
+**outcome: rob**
+
+The manager pass took this card on 2026-10-18 (m20261018121739-4849) and chose `rob`. The loop parked it again after that, and said: "**2026-10-25** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 2 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/." A card is managed once, so this one is yours.
+
