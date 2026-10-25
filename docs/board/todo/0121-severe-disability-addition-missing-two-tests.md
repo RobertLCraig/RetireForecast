@@ -121,3 +121,5 @@ WHY: The last open criterion needs web access that the loop does not have, and t
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
