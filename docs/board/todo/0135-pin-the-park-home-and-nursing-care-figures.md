@@ -118,3 +118,5 @@ WHY: Every task on this card needs live web pages, and only Rob can open a sessi
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
