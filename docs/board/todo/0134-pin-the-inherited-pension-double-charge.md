@@ -121,3 +121,5 @@ WHY: Both criteria need someone to read the published sources on the web, and th
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
