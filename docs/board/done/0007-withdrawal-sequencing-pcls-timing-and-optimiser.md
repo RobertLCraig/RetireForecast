@@ -1105,3 +1105,55 @@ meaning. What moved is a figure computed at render time.
 ## Comments
 
 **2026-09-28** Manager pass: back to ai-review, because the finding is already fixed on master. The seventh review's defect (the optimiser ranked on income tax only) and the sixth review's (a second lump sum turned crystallised money back into uncrystallised) are both fixed in commit `288a463`. They are pinned by `ScenarioForecasterTest::test_the_lifetime_tax_the_optimiser_ranks_on_counts_the_tax_paid_at_death` and `PathProjectorTest::test_two_lump_sums_crystallise_as_much_as_one_of_twice_the_size`, and `WithdrawalStrategyComparison::lifetimeTax` now adds the run's own IHT. The card only reached human-review through `d4bbe9a` ("clearing the tree so 0018 can merge back"), a housekeeping move with no park reason, so the fixed build never got its review. The reviews logged in between stopped at a session limit and judged nothing.
+
+### 2026-10-25 review (v20261025143338-996e)
+
+**suite**
+
+`vendor\bin\phpunit.bat` exited 0 after 626s, run by this job rather than reported by the card.
+
+**acceptance: sound**
+
+I checked all five criteria in the code. I tried to break each one and could not.
+
+- **#1** `PathProjector::fundShortfall` sends every "Fill the bands" pension draw through `$drawPensionUfpls`. It splits each draw with `PathProjector::ufplsSplit`, capped by `PathProjector::maxUfplsGross`, so the 25% tax-free part is applied. `PathProjectorTest::test_a_fill_bands_pension_draw_is_taken_ufpls_style_and_pays_less_lifetime_tax` pins the lower tax.
+- **#2** Both draw paths in `PathProjector::fundShortfall` check the access age first. `test_fill_bands_never_ufpls_draws_a_pot_before_its_owner_reaches_its_access_age` pins this.
+- **#3** `PathProjector::payIntoPot` is the only place money goes into a pot. It caps each payment with `PathProjector::contributionHeadroom`. All three trigger points call `PathProjector::triggerFlexibleAccess`, and that function skips inherited pots.
+- **#4** `PathProjector::fundShortfall` skips both banded pension steps when `$onGuaranteeCredit` is true, so capital is used first.
+- **#5** `WithdrawalStrategyComparison::for` takes `optimiserSavingPence` as baseline minus cheapest. Each side comes from `lifetimeTax`, which adds up one engine run's own `totalTax` and `iht`. Nothing is worked out again by hand.
+
+No criterion is unmet.
+
+VERDICT: sound
+
+**scope: sound**
+
+I checked the scope findings from the last two reviews against the code. All of them are fixed.
+
+- **Tile names:** both tiles now read their names from the panel data, as `baselineLabel` and `alternativeLabel`. This is true on screen (`resources/views/livewire/partials/withdrawal-sequencing.blade.php`) and in the PDF (`resources/views/pdf/partials/report.blade.php`). Neither template still has a fixed label for the second tile.
+- **PDF:** the PDF now prints `cheapestLabel` and the optimiser paragraph. The printed advice now has a figure on the page behind it.
+- **DECISIONS.md:** the false text "from the year of the trigger" is gone. The text that said `TaxEfficient`/`PensionAware` "are untouched" is gone too.
+- **Engine comments:** `PathProjector` no longer points to `mpaaHeadroom`, which does not exist. It also no longer says "One home for the trigger".
+- **Fence breach:** the change to `$drawPension` is now written down. The note is in PLAN-withdrawal-sequencing #5 and in DECISIONS 2026-08-19, item 4.
+- **Deferrals:** each one has its own card (0073 to 0077).
+
+The fence says multi-property and Section 24 belong to card 0019. The diff does touch multi-property files. But the diff covers 599 files and many other cards' commits, and none of what I traced in it belongs to this card. I found nothing this card built past the fence, and nothing it left half done.
+
+No criterion is disproved.
+
+VERDICT: sound
+
+**breakage: sound**
+
+I tried to break the work and found no defect.
+
+**What I checked:**
+- The old problems from the last two reviews are gone. There are no `mpaaHeadroom` links left, no "One home for the trigger" text, and no hard-coded "Filling your tax-free allowances first" tile label. I searched the engine, `app/Forecast` and the views.
+- The money purchase annual allowance (MPAA, the lower £10,000 pension limit) is now triggered from one place only: `PathProjector::triggerFlexibleAccess`. All three draw routes call it.
+- Drawing an inherited pot does not cap the heir's own pension allowance. The estate pass in `PathProjector` marks the pot with `inherited => true`, and `triggerFlexibleAccess` returns early for it.
+- The project's own test suite passed.
+
+**Limit:** this was a quick, targeted check. I did not read all of the 4,300 changed lines in `PathProjector`.
+
+VERDICT: sound
+
