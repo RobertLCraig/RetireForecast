@@ -119,3 +119,5 @@ WHY: The research is done, but the loop will not build a card whose criteria are
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
