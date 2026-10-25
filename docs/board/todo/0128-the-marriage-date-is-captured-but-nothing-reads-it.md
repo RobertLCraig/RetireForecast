@@ -89,3 +89,5 @@ WHY: The work needs web research, and the unattended loop has no web access, so 
 
 OUTCOME: rob
 
+
+**2026-10-25** **Research, 2026-10-25 (attended session, web)**
